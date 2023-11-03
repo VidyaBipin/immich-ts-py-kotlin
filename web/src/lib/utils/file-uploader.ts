@@ -4,6 +4,7 @@ import { api, AssetFileUploadResponseDto } from '@api';
 import { notificationController, NotificationType } from './../components/shared-components/notification/notification';
 import { UploadState } from '$lib/models/upload-asset';
 import { ExecutorQueue } from '$lib/utils/executor-queue';
+import { Upload } from 'tus-js-client';
 
 let _extensions: string[];
 
@@ -47,13 +48,53 @@ export const openFileUploadDialog = async (albumId: string | undefined = undefin
 
 export const fileUploadHandler = async (files: File[], albumId: string | undefined = undefined): Promise<string[]> => {
   const extensions = await getExtensions();
-  const promises = [];
+  const promises: Promise<string | undefined>[] = [];
   for (const file of files) {
     const name = file.name.toLowerCase();
-    if (extensions.some((ext) => name.endsWith(ext))) {
-      uploadAssetsStore.addNewUploadAsset({ id: getDeviceAssetId(file), file, albumId });
-      promises.push(uploadExecutionQueue.addTask(() => fileUploader(file, albumId)));
-    }
+    // if (extensions.some((ext) => name.endsWith(ext))) {
+    //   uploadAssetsStore.addNewUploadAsset({ id: getDeviceAssetId(file), file, albumId });
+    //   promises.push(uploadExecutionQueue.addTask(() => fileUploader(file, albumId)));
+    // }
+
+    const fileCreatedAt = new Date(file.lastModified).toISOString();
+    const deviceAssetId = getDeviceAssetId(file);
+    const upload = new Upload(file, {
+      endpoint: 'http://localhost:2283/api/asset/upload-tus',
+      retryDelays: [0, 3000, 5000, 10000, 20000],
+      metadata: {
+        filename: file.name,
+        deviceAssetId: deviceAssetId,
+        deviceId: 'WEB',
+        fileCreatedAt,
+        fileModifiedAt: new Date(file.lastModified).toISOString(),
+        isFavorite: 'false',
+        duration: '0:00:00.000000',
+      },
+      onError: function (error) {
+        console.log('Failed because: ' + error);
+      },
+      onProgress: function (bytesUploaded, bytesTotal) {
+        const percentage = ((bytesUploaded / bytesTotal) * 100).toFixed(2);
+        console.log(bytesUploaded, bytesTotal, percentage + '%');
+      },
+      onSuccess: function () {
+        console.log('Download %s from %s', file.name, upload.url);
+      },
+    });
+
+    // Check if there are any previous uploads to continue.
+    upload.findPreviousUploads().then(function (previousUploads) {
+      // Found previous uploads so we select the first one.
+      if (previousUploads.length) {
+        console.log('Found previous upload');
+        console.log(previousUploads[0]);
+
+        upload.resumeFromPreviousUpload(previousUploads[0]);
+      }
+
+      // Start the upload
+      upload.start();
+    });
   }
 
   const results = await Promise.all(promises);
