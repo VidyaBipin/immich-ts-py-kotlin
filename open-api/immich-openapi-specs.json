@@ -8683,6 +8683,9 @@
           "facialRecognition": {
             "type": "boolean"
           },
+          "importFaces": {
+            "type": "boolean"
+          },
           "map": {
             "type": "boolean"
           },
@@ -8719,7 +8722,8 @@
           "oauthAutoLaunch",
           "passwordLogin",
           "sidecar",
-          "search"
+          "search",
+          "importFaces"
         ],
         "type": "object"
       },
@@ -9085,6 +9089,9 @@
           "map": {
             "$ref": "#/components/schemas/SystemConfigMapDto"
           },
+          "metadata": {
+            "$ref": "#/components/schemas/SystemConfigMetadataDto"
+          },
           "newVersionCheck": {
             "$ref": "#/components/schemas/SystemConfigNewVersionCheckDto"
           },
@@ -9116,6 +9123,7 @@
         "required": [
           "ffmpeg",
           "logging",
+          "metadata",
           "machineLearning",
           "map",
           "newVersionCheck",
@@ -9334,6 +9342,17 @@
           "enabled",
           "lightStyle",
           "darkStyle"
+        ],
+        "type": "object"
+      },
+      "SystemConfigMetadataDto": {
+        "properties": {
+          "importFaces": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "importFaces"
         ],
         "type": "object"
       },

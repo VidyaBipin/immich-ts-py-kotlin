@@ -2,6 +2,7 @@
   import { page } from '$app/stores';
   import FFmpegSettings from '$lib/components/admin-page/settings/ffmpeg/ffmpeg-settings.svelte';
   import JobSettings from '$lib/components/admin-page/settings/job-settings/job-settings.svelte';
+  import MetadataSettings from '$lib/components/admin-page/settings/metadata-settings/metadata-settings.svelte';
   import MachineLearningSettings from '$lib/components/admin-page/settings/machine-learning-settings/machine-learning-settings.svelte';
   import MapSettings from '$lib/components/admin-page/settings/map-settings/map-settings.svelte';
   import OAuthSettings from '$lib/components/admin-page/settings/oauth/oauth-settings.svelte';
@@ -59,6 +60,12 @@
       title: 'Logging',
       subtitle: 'Manage log settings',
       isOpen: openSettings.includes('logging'),
+    },
+    {
+      item: MetadataSettings,
+      title: 'Metadata Settings',
+      subtitle: 'Manage metadata settings',
+      isOpen: openSettings.includes('metadata'),
     },
     {
       item: MachineLearningSettings,

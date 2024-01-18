@@ -3091,6 +3091,12 @@ export interface ServerFeaturesDto {
      * @type {boolean}
      * @memberof ServerFeaturesDto
      */
+    'importFaces': boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof ServerFeaturesDto
+     */
     'map': boolean;
     /**
      * 
@@ -3598,6 +3604,12 @@ export interface SystemConfigDto {
     'map': SystemConfigMapDto;
     /**
      * 
+     * @type {SystemConfigMetadataDto}
+     * @memberof SystemConfigDto
+     */
+    'metadata': SystemConfigMetadataDto;
+    /**
+     * 
      * @type {SystemConfigNewVersionCheckDto}
      * @memberof SystemConfigDto
      */
@@ -3937,6 +3949,19 @@ export interface SystemConfigMapDto {
      * @memberof SystemConfigMapDto
      */
     'lightStyle': string;
+}
+/**
+ * 
+ * @export
+ * @interface SystemConfigMetadataDto
+ */
+export interface SystemConfigMetadataDto {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof SystemConfigMetadataDto
+     */
+    'importFaces': boolean;
 }
 /**
  * 
