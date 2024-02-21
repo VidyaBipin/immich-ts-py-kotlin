@@ -12,10 +12,12 @@ import {
   newMachineLearningRepositoryMock,
   newMediaRepositoryMock,
   newMoveRepositoryMock,
+  newPartnerRepositoryMock,
   newPersonRepositoryMock,
   newSearchRepositoryMock,
   newStorageRepositoryMock,
   newSystemConfigRepositoryMock,
+  partnerStub,
   personStub,
 } from '@test';
 import { IsNull } from 'typeorm';
@@ -30,6 +32,7 @@ import {
   IMachineLearningRepository,
   IMediaRepository,
   IMoveRepository,
+  IPartnerRepository,
   IPersonRepository,
   ISearchRepository,
   IStorageRepository,
@@ -45,6 +48,7 @@ const responseDto: PersonResponseDto = {
   birthDate: null,
   thumbnailPath: '/path/to/thumbnail.jpg',
   isHidden: false,
+  ownerId: authStub.admin.user.id,
 };
 
 const statistics = { assets: 3 };
@@ -74,6 +78,7 @@ describe(PersonService.name, () => {
   let machineLearningMock: jest.Mocked<IMachineLearningRepository>;
   let mediaMock: jest.Mocked<IMediaRepository>;
   let moveMock: jest.Mocked<IMoveRepository>;
+  let partnerMock: jest.Mocked<IPartnerRepository>;
   let personMock: jest.Mocked<IPersonRepository>;
   let storageMock: jest.Mocked<IStorageRepository>;
   let searchMock: jest.Mocked<ISearchRepository>;
@@ -88,6 +93,7 @@ describe(PersonService.name, () => {
     machineLearningMock = newMachineLearningRepositoryMock();
     moveMock = newMoveRepositoryMock();
     mediaMock = newMediaRepositoryMock();
+    partnerMock = newPartnerRepositoryMock();
     personMock = newPersonRepositoryMock();
     storageMock = newStorageRepositoryMock();
     searchMock = newSearchRepositoryMock();
@@ -98,6 +104,7 @@ describe(PersonService.name, () => {
       machineLearningMock,
       moveMock,
       mediaMock,
+      partnerMock,
       personMock,
       configMock,
       storageMock,
@@ -115,31 +122,67 @@ describe(PersonService.name, () => {
 
   describe('getAll', () => {
     it('should get all people with thumbnails', async () => {
-      personMock.getAllForUser.mockResolvedValue([personStub.withName, personStub.noThumbnail]);
+      personMock.getAllForUsers.mockResolvedValue([personStub.withName, personStub.noThumbnail]);
       personMock.getNumberOfPeople.mockResolvedValue(1);
       await expect(sut.getAll(authStub.admin, { withHidden: undefined })).resolves.toEqual({
         total: 1,
         people: [responseDto],
       });
-      expect(personMock.getAllForUser).toHaveBeenCalledWith(authStub.admin.user.id, {
+      expect(personMock.getAllForUsers).toHaveBeenCalledWith([authStub.admin.user.id], {
+        minimumFaceCount: 3,
+        withHidden: false,
+      });
+    });
+    it("should get partner's people when requested ", async () => {
+      personMock.getAllForUsers.mockResolvedValue([personStub.withName, personStub.partnerPerson]);
+      personMock.getNumberOfPeople.mockResolvedValue(2);
+      partnerMock.getAll.mockResolvedValue([partnerStub.adminToUser1, partnerStub.user1ToAdmin1]);
+      await expect(sut.getAll(authStub.admin, { withHidden: undefined, withPartners: true })).resolves.toEqual({
+        total: 2,
+        people: [
+          responseDto,
+          {
+            id: 'person-4',
+            name: 'Person 4',
+            birthDate: null,
+            thumbnailPath: '/path/to/thumbnail',
+            isHidden: false,
+            ownerId: authStub.user1.user.id,
+          },
+        ],
+      });
+      expect(personMock.getAllForUsers).toHaveBeenCalledWith([authStub.admin.user.id, authStub.user1.user.id], {
+        minimumFaceCount: 3,
+        withHidden: false,
+      });
+    });
+    it('should NOT get partners people without flag', async () => {
+      personMock.getAllForUsers.mockResolvedValue([personStub.withName]);
+      personMock.getNumberOfPeople.mockResolvedValue(1);
+      partnerMock.getAll.mockResolvedValue([partnerStub.adminToUser1, partnerStub.user1ToAdmin1]);
+      await expect(sut.getAll(authStub.admin, { /*withPartners: true,*/ withHidden: undefined })).resolves.toEqual({
+        total: 1,
+        people: [responseDto],
+      });
+      expect(personMock.getAllForUsers).toHaveBeenCalledWith([authStub.admin.user.id], {
         minimumFaceCount: 3,
         withHidden: false,
       });
     });
     it('should get all visible people with thumbnails', async () => {
-      personMock.getAllForUser.mockResolvedValue([personStub.withName, personStub.hidden]);
+      personMock.getAllForUsers.mockResolvedValue([personStub.withName, personStub.hidden]);
       personMock.getNumberOfPeople.mockResolvedValue(2);
       await expect(sut.getAll(authStub.admin, { withHidden: false })).resolves.toEqual({
         total: 2,
         people: [responseDto],
       });
-      expect(personMock.getAllForUser).toHaveBeenCalledWith(authStub.admin.user.id, {
+      expect(personMock.getAllForUsers).toHaveBeenCalledWith([authStub.admin.user.id], {
         minimumFaceCount: 3,
         withHidden: false,
       });
     });
     it('should get all hidden and visible people with thumbnails', async () => {
-      personMock.getAllForUser.mockResolvedValue([personStub.withName, personStub.hidden]);
+      personMock.getAllForUsers.mockResolvedValue([personStub.withName, personStub.hidden]);
       personMock.getNumberOfPeople.mockResolvedValue(2);
       await expect(sut.getAll(authStub.admin, { withHidden: true })).resolves.toEqual({
         total: 2,
@@ -151,10 +194,11 @@ describe(PersonService.name, () => {
             birthDate: null,
             thumbnailPath: '/path/to/thumbnail.jpg',
             isHidden: true,
+            ownerId: personStub.noName.ownerId,
           },
         ],
       });
-      expect(personMock.getAllForUser).toHaveBeenCalledWith(authStub.admin.user.id, {
+      expect(personMock.getAllForUsers).toHaveBeenCalledWith([authStub.admin.user.id], {
         minimumFaceCount: 3,
         withHidden: true,
       });
@@ -284,6 +328,7 @@ describe(PersonService.name, () => {
         birthDate: new Date('1976-06-30'),
         thumbnailPath: '/path/to/thumbnail.jpg',
         isHidden: false,
+        ownerId: personStub.noName.ownerId,
       });
       expect(personMock.getById).toHaveBeenCalledWith('person-1');
       expect(personMock.update).toHaveBeenCalledWith({ id: 'person-1', birthDate: new Date('1976-06-30') });
@@ -484,6 +529,7 @@ describe(PersonService.name, () => {
         isHidden: personStub.noName.isHidden,
         id: personStub.noName.id,
         name: personStub.noName.name,
+        ownerId: personStub.noName.ownerId,
         thumbnailPath: personStub.noName.thumbnailPath,
       });
 

@@ -94,6 +94,7 @@ export type PersonWithFacesResponseDto = {
     id: string;
     isHidden: boolean;
     name: string;
+    ownerId: string;
     thumbnailPath: string;
 };
 export type SmartInfoResponseDto = {
@@ -395,6 +396,7 @@ export type PersonResponseDto = {
     id: string;
     isHidden: boolean;
     name: string;
+    ownerId: string;
     thumbnailPath: string;
 };
 export type AssetFaceResponseDto = {
@@ -2021,14 +2023,16 @@ export function updatePartner({ id, updatePartnerDto }: {
         body: updatePartnerDto
     })));
 }
-export function getAllPeople({ withHidden }: {
+export function getAllPeople({ withHidden, withPartners }: {
     withHidden?: boolean;
+    withPartners?: boolean;
 }, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
         data: PeopleResponseDto;
     }>(`/person${QS.query(QS.explode({
-        withHidden
+        withHidden,
+        withPartners
     }))}`, {
         ...opts
     }));

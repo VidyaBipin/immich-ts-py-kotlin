@@ -4006,6 +4006,15 @@
               "default": false,
               "type": "boolean"
             }
+          },
+          {
+            "name": "withPartners",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -8669,6 +8678,9 @@
           "name": {
             "type": "string"
           },
+          "ownerId": {
+            "type": "string"
+          },
           "thumbnailPath": {
             "type": "string"
           }
@@ -8678,6 +8690,7 @@
           "id",
           "isHidden",
           "name",
+          "ownerId",
           "thumbnailPath"
         ],
         "type": "object"
@@ -8738,6 +8751,9 @@
           "name": {
             "type": "string"
           },
+          "ownerId": {
+            "type": "string"
+          },
           "thumbnailPath": {
             "type": "string"
           }
@@ -8748,6 +8764,7 @@
           "id",
           "isHidden",
           "name",
+          "ownerId",
           "thumbnailPath"
         ],
         "type": "object"
