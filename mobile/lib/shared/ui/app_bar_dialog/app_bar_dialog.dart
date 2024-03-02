@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:immich_mobile/extensions/build_context_extensions.dart';
-import 'package:immich_mobile/modules/backup/models/backup_state.model.dart';
 import 'package:immich_mobile/modules/backup/providers/backup.provider.dart';
 import 'package:immich_mobile/modules/backup/providers/manual_upload.provider.dart';
 import 'package:immich_mobile/modules/login/providers/authentication.provider.dart';
 import 'package:immich_mobile/routing/router.dart';
 import 'package:immich_mobile/shared/providers/asset.provider.dart';
+import 'package:immich_mobile/shared/providers/server_info.provider.dart';
 import 'package:immich_mobile/shared/providers/user.provider.dart';
 import 'package:immich_mobile/shared/providers/websocket.provider.dart';
 import 'package:immich_mobile/shared/ui/app_bar_dialog/app_bar_profile_info.dart';
@@ -23,7 +23,8 @@ class ImmichAppBarDialog extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    BackUpState backupState = ref.watch(backupProvider);
+    final serverInfo =
+        ref.watch(serverInfoProvider.select((value) => value.serverDiskInfo));
     final theme = context.themeData;
     bool isHorizontal = !context.isMobile;
     final horizontalPadding = isHorizontal ? 100.0 : 20.0;
@@ -31,7 +32,7 @@ class ImmichAppBarDialog extends HookConsumerWidget {
 
     useEffect(
       () {
-        ref.read(backupProvider.notifier).updateServerInfo();
+        ref.read(serverInfoProvider.notifier).getServerDiskInfo();
         ref.read(currentUserProvider.notifier).refresh();
         return null;
       },
@@ -134,9 +135,9 @@ class ImmichAppBarDialog extends HookConsumerWidget {
     }
 
     Widget buildStorageInformation() {
-      var percentage = backupState.serverInfo.diskUsagePercentage / 100;
-      var usedDiskSpace = backupState.serverInfo.diskUse;
-      var totalDiskSpace = backupState.serverInfo.diskSize;
+      var percentage = serverInfo.diskUsagePercentage / 100;
+      var usedDiskSpace = serverInfo.diskUse;
+      var totalDiskSpace = serverInfo.diskSize;
 
       if (user != null && user.hasQuota) {
         usedDiskSpace = formatBytes(user.quotaUsageInBytes);

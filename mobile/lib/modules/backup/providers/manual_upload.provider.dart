@@ -18,6 +18,7 @@ import 'package:immich_mobile/modules/settings/providers/app_settings.provider.d
 import 'package:immich_mobile/modules/settings/services/app_settings.service.dart';
 import 'package:immich_mobile/shared/models/asset.dart';
 import 'package:immich_mobile/shared/providers/app_state.provider.dart';
+import 'package:immich_mobile/shared/providers/server_info.provider.dart';
 import 'package:immich_mobile/shared/services/local_notification.service.dart';
 import 'package:immich_mobile/shared/ui/immich_toast.dart';
 import 'package:immich_mobile/utils/backup_progress.dart';
@@ -115,7 +116,7 @@ class ManualUploadNotifier extends StateNotifier<ManualUploadState> {
     bool isDuplicated,
   ) {
     state = state.copyWith(successfulUploads: state.successfulUploads + 1);
-    _backupProvider.updateServerInfo();
+    ref.read(serverInfoProvider.notifier).getServerDiskInfo();
   }
 
   void _onAssetUploadError(ErrorUploadAsset errorAssetInfo) {
@@ -158,25 +159,7 @@ class ManualUploadNotifier extends StateNotifier<ManualUploadState> {
       if (ref.read(galleryPermissionNotifier.notifier).hasPermission) {
         await PhotoManager.clearFileCache();
 
-        // We do not have 1:1 mapping of all AssetEntity fields to Asset. This results in cases
-        // where platform specific fields such as `subtype` used to detect platform specific assets such as
-        // LivePhoto in iOS is lost when we directly fetch the local asset from Asset using Asset.local
-        List<AssetEntity?> allAssetsFromDevice = await Future.wait(
-          allManualUploads
-              // Filter local only assets
-              .where((e) => e.isLocal && !e.isRemote)
-              .map((e) => e.local!.obtainForNewProperties()),
-        );
-
-        if (allAssetsFromDevice.length != allManualUploads.length) {
-          _log.warning(
-            '[_startUpload] Refreshed upload list -> ${allManualUploads.length - allAssetsFromDevice.length} asset will not be uploaded',
-          );
-        }
-
-        Set<AssetEntity> allUploadAssets = allAssetsFromDevice.nonNulls.toSet();
-
-        if (allUploadAssets.isEmpty) {
+        if (allManualUploads.isEmpty) {
           debugPrint("[_startUpload] No Assets to upload - Abort Process");
           _backupProvider.updateBackupProgress(BackUpProgressEnum.idle);
           return false;
@@ -184,7 +167,7 @@ class ManualUploadNotifier extends StateNotifier<ManualUploadState> {
 
         state = state.copyWith(
           progressInPercentage: 0,
-          totalAssetsToUpload: allUploadAssets.length,
+          totalAssetsToUpload: allManualUploads.length,
           successfulUploads: 0,
           currentAssetIndex: 0,
           currentUploadAsset: CurrentUploadAsset(
@@ -213,7 +196,7 @@ class ManualUploadNotifier extends StateNotifier<ManualUploadState> {
         final pmProgressHandler = Platform.isIOS ? PMProgressHandler() : null;
 
         final bool ok = await ref.read(backupServiceProvider).backupAsset(
-              allUploadAssets,
+              allManualUploads,
               state.cancelToken,
               pmProgressHandler,
               _onAssetUploaded,

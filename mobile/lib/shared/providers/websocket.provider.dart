@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:immich_mobile/modules/backup/providers/device_assets.provider.dart';
 import 'package:immich_mobile/modules/login/providers/authentication.provider.dart';
 import 'package:immich_mobile/shared/models/asset.dart';
 import 'package:immich_mobile/shared/models/server_info/server_version.model.dart';
@@ -185,16 +186,6 @@ class WebsocketNotifier extends StateNotifier<WebsocketState> {
     }
   }
 
-  void stopListenToEvent(String eventName) {
-    debugPrint("Stop listening to event $eventName");
-    state.socket?.off(eventName);
-  }
-
-  void listenUploadEvent() {
-    debugPrint("Start listening to event on_upload_success");
-    state.socket?.on('on_upload_success', _handleOnUploadSuccess);
-  }
-
   void addPendingChange(PendingAction action, dynamic value) {
     final now = DateTime.now();
     state = state.copyWith(
@@ -241,6 +232,9 @@ class WebsocketNotifier extends StateNotifier<WebsocketState> {
             .whereNot((c) => uploadedChanges.contains(c))
             .toList(),
       );
+
+      // Reload backup state
+      _ref.invalidate(deviceAssetsProvider);
     }
   }
 

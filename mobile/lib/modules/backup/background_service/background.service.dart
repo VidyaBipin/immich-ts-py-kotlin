@@ -9,14 +9,20 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:immich_mobile/main.dart';
+import 'package:immich_mobile/modules/album/services/local_album.service.dart';
 import 'package:immich_mobile/modules/backup/background_service/localization.dart';
 import 'package:immich_mobile/modules/backup/models/backup_album.model.dart';
 import 'package:immich_mobile/modules/backup/models/current_upload_asset.model.dart';
 import 'package:immich_mobile/modules/backup/models/error_upload_asset.model.dart';
 import 'package:immich_mobile/modules/backup/services/backup.service.dart';
+import 'package:immich_mobile/modules/backup/services/backup_album.service.dart';
 import 'package:immich_mobile/modules/settings/services/app_settings.service.dart';
+import 'package:immich_mobile/shared/models/asset.dart';
+import 'package:immich_mobile/shared/models/device_asset.dart';
 import 'package:immich_mobile/shared/models/store.dart';
 import 'package:immich_mobile/shared/services/api.service.dart';
+import 'package:immich_mobile/shared/services/hash.service.dart';
+import 'package:immich_mobile/shared/services/sync.service.dart';
 import 'package:immich_mobile/utils/backup_progress.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider_ios/path_provider_ios.dart';
@@ -344,35 +350,43 @@ class BackgroundService {
     AppSettingsService settingService = AppSettingsService();
     BackupService backupService = BackupService(apiService, db, settingService);
     AppSettingsService settingsService = AppSettingsService();
-
-    final selectedAlbums = backupService.selectedAlbumsQuery().findAllSync();
-    final excludedAlbums = backupService.excludedAlbumsQuery().findAllSync();
-    if (selectedAlbums.isEmpty) {
-      return true;
-    }
+    HashService hashService = HashService(db, this);
+    SyncService syncService = SyncService(db);
+    BackupAlbumService backupAlbumService = BackupAlbumService(db);
+    LocalAlbumService localAlbumService =
+        LocalAlbumService(db, hashService, syncService, backupAlbumService);
 
     await PhotoManager.setIgnorePermissionCheck(true);
 
     do {
+      await localAlbumService.refreshDeviceAlbums();
+
+      final idsToBackup = await db.deviceAssets
+          .filter()
+          .backupSelectionEqualTo(BackupSelection.select)
+          .idProperty()
+          .findAll();
+      final localAssetsToBackup = await db.assets
+          .where()
+          .remoteIdIsNull()
+          .filter()
+          .anyOf(idsToBackup, (q, id) => q.localIdEqualTo(id))
+          .findAll();
+
+      final toUpload =
+          await backupService.remoteAlreadyUploaded(localAssetsToBackup);
+      if (toUpload.isEmpty) {
+        debugPrint("No Asset On Device - Abort Backup Process");
+        return false;
+      }
+
       final bool backupOk = await _runBackup(
         backupService,
         settingsService,
-        selectedAlbums,
-        excludedAlbums,
+        toUpload.toList(),
       );
       if (backupOk) {
         await Store.delete(StoreKey.backupFailedSince);
-        // TODO: update album specific last backup time
-        final backupAlbums = await db.backupAlbums
-            .filter()
-            .not()
-            .selectionEqualTo(BackupSelection.none)
-            .findAll();
-        List<BackupAlbum> selectedAlbums = backupAlbums.map((e) {
-          e.lastBackup = DateTime.now();
-          return e;
-        }).toList();
-        await db.writeTxn(() => db.backupAlbums.putAll(selectedAlbums));
       } else if (Store.tryGet(StoreKey.backupFailedSince) == null) {
         Store.put(StoreKey.backupFailedSince, DateTime.now());
         return false;
@@ -387,8 +401,7 @@ class BackgroundService {
   Future<bool> _runBackup(
     BackupService backupService,
     AppSettingsService settingsService,
-    List<BackupAlbum> selectedAlbums,
-    List<BackupAlbum> excludedAlbums,
+    List<Asset> toUpload,
   ) async {
     _errorGracePeriodExceeded = _isErrorGracePeriodExceeded(settingsService);
     final bool notifyTotalProgress = settingsService
@@ -396,32 +409,10 @@ class BackgroundService {
     final bool notifySingleProgress = settingsService
         .getSetting<bool>(AppSettingsEnum.backgroundBackupSingleProgress);
 
-    if (_canceledBySystem) {
+    if (_canceledBySystem || toUpload.isEmpty) {
       return false;
     }
 
-    List<AssetEntity> toUpload = await backupService.buildUploadCandidates(
-      selectedAlbums,
-      excludedAlbums,
-    );
-
-    try {
-      toUpload = await backupService.removeAlreadyUploadedAssets(toUpload);
-    } catch (e) {
-      _showErrorNotification(
-        title: "backup_background_service_error_title".tr(),
-        content: "backup_background_service_connection_failed_message".tr(),
-      );
-      return false;
-    }
-
-    if (_canceledBySystem) {
-      return false;
-    }
-
-    if (toUpload.isEmpty) {
-      return true;
-    }
     _assetsToUploadCount = toUpload.length;
     _uploadedAssetsCount = 0;
     _updateNotification(

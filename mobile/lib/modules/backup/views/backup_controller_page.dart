@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:math';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -10,6 +9,7 @@ import 'package:immich_mobile/extensions/build_context_extensions.dart';
 import 'package:immich_mobile/extensions/object_extensions.dart';
 import 'package:immich_mobile/modules/album/providers/local_album.provider.dart';
 import 'package:immich_mobile/modules/backup/providers/backup_album.provider.dart';
+import 'package:immich_mobile/modules/backup/providers/device_assets.provider.dart';
 import 'package:immich_mobile/modules/backup/providers/error_backup_list.provider.dart';
 import 'package:immich_mobile/modules/backup/providers/ios_background_settings.provider.dart';
 import 'package:immich_mobile/modules/backup/providers/manual_upload.provider.dart';
@@ -17,7 +17,6 @@ import 'package:immich_mobile/modules/backup/ui/current_backup_asset_info_box.da
 import 'package:immich_mobile/modules/backup/models/backup_state.model.dart';
 import 'package:immich_mobile/modules/backup/providers/backup.provider.dart';
 import 'package:immich_mobile/routing/router.dart';
-import 'package:immich_mobile/shared/providers/websocket.provider.dart';
 import 'package:immich_mobile/modules/backup/ui/backup_info_card.dart';
 
 @RoutePage()
@@ -26,37 +25,29 @@ class BackupControllerPage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    BackUpState backupState = ref.watch(backupProvider);
+    final backupState = ref.watch(backupProvider);
     final backupAlbums = ref.watch(backupAlbumsProvider);
+    final deviceAssetState = ref.watch(deviceAssetsProvider);
     final hasAnyAlbum =
         backupAlbums.valueOrNull?.selectedBackupAlbums.isNotEmpty ?? false;
 
     bool hasExclusiveAccess =
         backupState.backupProgress != BackUpProgressEnum.inBackground;
-    bool shouldBackup =
-        backupState.allUniqueAssets.length - backupState.backedUpAssetsCount ==
-                    0 ||
-                !hasExclusiveAccess
-            ? false
-            : true;
+    bool shouldBackup = deviceAssetState.valueOrNull?.assetsRemaining == 0 ||
+            !hasExclusiveAccess
+        ? false
+        : true;
 
     useEffect(
       () {
-        if (backupState.backupProgress != BackUpProgressEnum.inProgress &&
-            backupState.backupProgress != BackUpProgressEnum.manualInProgress) {
-          ref.watch(backupProvider.notifier).getBackupInfo();
-        }
-
         // Update the background settings information just to make sure we
         // have the latest, since the platform channel will not update
         // automatically
         if (Platform.isIOS) {
           ref.watch(iOSBackgroundSettingsProvider.notifier).refresh();
         }
-
-        ref
-            .watch(websocketProvider.notifier)
-            .stopListenToEvent('on_upload_success');
+        ref.read(backupAlbumsProvider.notifier).refreshAlbumAssetsState();
+        ref.invalidate(deviceAssetsProvider);
         return null;
       },
       [],
@@ -271,10 +262,7 @@ class BackupControllerPage extends HookConsumerWidget {
           "backup_controller_page_backup",
         ).tr(),
         leading: IconButton(
-          onPressed: () {
-            ref.watch(websocketProvider.notifier).listenUploadEvent();
-            context.popRoute(true);
-          },
+          onPressed: () => context.popRoute(true),
           splashRadius: 24,
           icon: const Icon(
             Icons.arrow_back_ios_rounded,
@@ -303,18 +291,22 @@ class BackupControllerPage extends HookConsumerWidget {
                   BackupInfoCard(
                     title: "backup_controller_page_total".tr(),
                     subtitle: "backup_controller_page_total_sub".tr(),
-                    info:
-                        ref.watch(localAlbumsProvider).valueOrNull.isNullOrEmpty
-                            ? "..."
-                            : "${backupState.allUniqueAssets.length}",
+                    info: ref
+                            .watch(localAlbumsProvider)
+                            .valueOrNull
+                            .isNullOrEmpty
+                        ? "..."
+                        : "${deviceAssetState.valueOrNull?.uniqueAssetsToBackup ?? 0}",
                   ),
                   BackupInfoCard(
                     title: "backup_controller_page_backup".tr(),
                     subtitle: "backup_controller_page_backup_sub".tr(),
-                    info:
-                        ref.watch(localAlbumsProvider).valueOrNull.isNullOrEmpty
-                            ? "..."
-                            : "${backupState.backedUpAssetsCount}",
+                    info: ref
+                            .watch(localAlbumsProvider)
+                            .valueOrNull
+                            .isNullOrEmpty
+                        ? "..."
+                        : "${deviceAssetState.valueOrNull?.backedUpAssets ?? 0}",
                   ),
                   BackupInfoCard(
                     title: "backup_controller_page_remainder".tr(),
@@ -324,7 +316,7 @@ class BackupControllerPage extends HookConsumerWidget {
                             .valueOrNull
                             .isNullOrEmpty
                         ? "..."
-                        : "${max(0, backupState.allUniqueAssets.length - backupState.backedUpAssetsCount)}",
+                        : "${deviceAssetState.valueOrNull?.assetsRemaining ?? 0}",
                   ),
                   const Divider(),
                   const CurrentUploadingAssetInfoBox(),

@@ -7,7 +7,8 @@ import 'package:immich_mobile/modules/backup/models/backup_album.model.dart';
 import 'package:immich_mobile/modules/backup/models/backup_state.model.dart';
 import 'package:immich_mobile/modules/backup/models/current_upload_asset.model.dart';
 import 'package:immich_mobile/modules/backup/models/error_upload_asset.model.dart';
-import 'package:immich_mobile/modules/backup/providers/backup_album.provider.dart';
+import 'package:immich_mobile/modules/backup/providers/backup_settings.provider.dart';
+import 'package:immich_mobile/modules/backup/providers/device_assets.provider.dart';
 import 'package:immich_mobile/modules/backup/providers/error_backup_list.provider.dart';
 import 'package:immich_mobile/modules/backup/background_service/background.service.dart';
 import 'package:immich_mobile/modules/backup/services/backup.service.dart';
@@ -15,11 +16,11 @@ import 'package:immich_mobile/modules/login/models/authentication_state.model.da
 import 'package:immich_mobile/modules/login/providers/authentication.provider.dart';
 import 'package:immich_mobile/modules/onboarding/providers/gallery_permission.provider.dart';
 import 'package:immich_mobile/shared/models/asset.dart';
-import 'package:immich_mobile/shared/models/server_info/server_disk_info.model.dart';
+import 'package:immich_mobile/shared/models/device_asset.dart';
 import 'package:immich_mobile/shared/models/store.dart';
 import 'package:immich_mobile/shared/providers/app_state.provider.dart';
 import 'package:immich_mobile/shared/providers/db.provider.dart';
-import 'package:immich_mobile/shared/services/server_info.service.dart';
+import 'package:immich_mobile/shared/providers/server_info.provider.dart';
 import 'package:isar/isar.dart';
 import 'package:logging/logging.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -28,7 +29,7 @@ import 'package:photo_manager/photo_manager.dart';
 class BackupNotifier extends StateNotifier<BackUpState> {
   BackupNotifier(
     this._backupService,
-    this._serverInfoService,
+    this._serverInfoNotifier,
     this._authState,
     this._backgroundService,
     this._galleryPermissionNotifier,
@@ -37,23 +38,8 @@ class BackupNotifier extends StateNotifier<BackUpState> {
   ) : super(
           BackUpState(
             backupProgress: BackUpProgressEnum.idle,
-            allAssetsInDatabase: const [],
             progressInPercentage: 0,
             cancelToken: CancellationToken(),
-            autoBackup: Store.get(StoreKey.autoBackup, false),
-            backgroundBackup: Store.get(StoreKey.backgroundBackup, false),
-            backupRequireWifi: Store.get(StoreKey.backupRequireWifi, true),
-            backupRequireCharging:
-                Store.get(StoreKey.backupRequireCharging, false),
-            backupTriggerDelay: Store.get(StoreKey.backupTriggerDelay, 5000),
-            serverInfo: const ServerDiskInfo(
-              diskAvailable: "0",
-              diskSize: "0",
-              diskUse: "0",
-              diskUsagePercentage: 0,
-            ),
-            allUniqueAssets: const {},
-            backedUpAssetsCount: 0,
             currentUploadAsset: CurrentUploadAsset(
               id: '...',
               fileCreatedAt: DateTime.parse('2020-10-04'),
@@ -67,157 +53,12 @@ class BackupNotifier extends StateNotifier<BackUpState> {
 
   final log = Logger('BackupNotifier');
   final BackupService _backupService;
-  final ServerInfoService _serverInfoService;
+  final ServerInfoNotifier _serverInfoNotifier;
   final AuthenticationState _authState;
   final BackgroundService _backgroundService;
   final GalleryPermissionNotifier _galleryPermissionNotifier;
   final Isar _db;
   final Ref ref;
-
-  void setAutoBackup(bool enabled) {
-    Store.put(StoreKey.autoBackup, enabled);
-    state = state.copyWith(autoBackup: enabled);
-  }
-
-  void configureBackgroundBackup({
-    bool? enabled,
-    bool? requireWifi,
-    bool? requireCharging,
-    int? triggerDelay,
-    required void Function(String msg) onError,
-    required void Function() onBatteryInfo,
-  }) async {
-    assert(
-      enabled != null ||
-          requireWifi != null ||
-          requireCharging != null ||
-          triggerDelay != null,
-    );
-    final bool wasEnabled = state.backgroundBackup;
-    final bool wasWifi = state.backupRequireWifi;
-    final bool wasCharging = state.backupRequireCharging;
-    final int oldTriggerDelay = state.backupTriggerDelay;
-    state = state.copyWith(
-      backgroundBackup: enabled,
-      backupRequireWifi: requireWifi,
-      backupRequireCharging: requireCharging,
-      backupTriggerDelay: triggerDelay,
-    );
-
-    if (state.backgroundBackup) {
-      bool success = true;
-      if (!wasEnabled) {
-        if (!await _backgroundService.isIgnoringBatteryOptimizations()) {
-          onBatteryInfo();
-        }
-        success &= await _backgroundService.enableService(immediate: true);
-      }
-      success &= success &&
-          await _backgroundService.configureService(
-            requireUnmetered: state.backupRequireWifi,
-            requireCharging: state.backupRequireCharging,
-            triggerUpdateDelay: state.backupTriggerDelay,
-            triggerMaxDelay: state.backupTriggerDelay * 10,
-          );
-      if (success) {
-        await Store.put(StoreKey.backupRequireWifi, state.backupRequireWifi);
-        await Store.put(
-          StoreKey.backupRequireCharging,
-          state.backupRequireCharging,
-        );
-        await Store.put(StoreKey.backupTriggerDelay, state.backupTriggerDelay);
-        await Store.put(StoreKey.backgroundBackup, state.backgroundBackup);
-      } else {
-        state = state.copyWith(
-          backgroundBackup: wasEnabled,
-          backupRequireWifi: wasWifi,
-          backupRequireCharging: wasCharging,
-          backupTriggerDelay: oldTriggerDelay,
-        );
-        onError("backup_controller_page_background_configure_error");
-      }
-    } else {
-      final bool success = await _backgroundService.disableService();
-      if (!success) {
-        state = state.copyWith(backgroundBackup: wasEnabled);
-        onError("backup_controller_page_background_configure_error");
-      }
-    }
-  }
-
-  ///
-  /// From all the selected and albums assets
-  /// Find the assets that are not overlapping between the two sets
-  /// Those assets are unique and are used as the total assets
-  ///
-  Future<void> _updateBackupAssetCount() async {
-    final duplicatedAssetIds = await _backupService.getDuplicatedAssetIds();
-    final backupAlbums = await ref.read(backupAlbumsProvider.future);
-    final Set<Asset> assetsFromSelectedAlbums = {};
-    final Set<Asset> assetsFromExcludedAlbums = {};
-
-    for (final selected in backupAlbums.selectedBackupAlbums) {
-      assetsFromSelectedAlbums.addAll(selected.album.value?.assets ?? []);
-    }
-
-    for (final excluded in backupAlbums.excludedBackupAlbums) {
-      assetsFromExcludedAlbums.addAll(excluded.album.value?.assets ?? []);
-    }
-
-    final Set<Asset> allUniqueAssets =
-        assetsFromSelectedAlbums.difference(assetsFromExcludedAlbums);
-    final allAssetsInDatabase = await _backupService.getDeviceBackupAsset();
-
-    if (allAssetsInDatabase == null) {
-      return;
-    }
-
-    // Find asset that were backup from selected albums
-    final Set<String> selectedAlbumsBackupAssets =
-        allUniqueAssets.map((e) => e.localId).nonNulls.toSet();
-
-    selectedAlbumsBackupAssets
-        .removeWhere((assetId) => !allAssetsInDatabase.contains(assetId));
-
-    // Remove duplicated asset from all unique assets
-    allUniqueAssets
-        .removeWhere((asset) => duplicatedAssetIds.contains(asset.localId));
-
-    if (allUniqueAssets.isEmpty) {
-      log.fine("No assets are selected for back up");
-      state = state.copyWith(
-        backupProgress: BackUpProgressEnum.idle,
-        allAssetsInDatabase: allAssetsInDatabase,
-        allUniqueAssets: {},
-        backedUpAssetsCount: selectedAlbumsBackupAssets.length,
-      );
-    } else {
-      state = state.copyWith(
-        allAssetsInDatabase: allAssetsInDatabase,
-        allUniqueAssets: allUniqueAssets,
-        backedUpAssetsCount: selectedAlbumsBackupAssets.length,
-      );
-    }
-  }
-
-  /// Get all necessary information for calculating the available albums,
-  /// which albums are selected or excluded
-  /// and then update the UI according to those information
-  Future<void> getBackupInfo() async {
-    final isEnabled = await _backgroundService.isBackgroundBackupEnabled();
-
-    state = state.copyWith(backgroundBackup: isEnabled);
-    if (isEnabled != Store.get(StoreKey.backgroundBackup, !isEnabled)) {
-      Store.put(StoreKey.backgroundBackup, isEnabled);
-    }
-
-    if (state.backupProgress != BackUpProgressEnum.inBackground) {
-      await updateServerInfo();
-      await _updateBackupAssetCount();
-    } else {
-      log.warning("cannot get backup info - background backup is in progress!");
-    }
-  }
 
   /// Invoke backup process
   Future<void> startBackupProcess() async {
@@ -225,51 +66,63 @@ class BackupNotifier extends StateNotifier<BackUpState> {
     assert(state.backupProgress == BackUpProgressEnum.idle);
     state = state.copyWith(backupProgress: BackUpProgressEnum.inProgress);
 
-    await getBackupInfo();
+    await _serverInfoNotifier.getServerDiskInfo();
 
     final hasPermission = _galleryPermissionNotifier.hasPermission;
-    if (hasPermission) {
-      await PhotoManager.clearFileCache();
-
-      if (state.allUniqueAssets.isEmpty) {
-        log.info("No Asset On Device - Abort Backup Process");
-        state = state.copyWith(backupProgress: BackUpProgressEnum.idle);
-        return;
-      }
-
-      Set<AssetEntity> assetsWillBeBackup = Set.from(state.allUniqueAssets);
-      // Remove item that has already been backed up
-      for (final assetId in state.allAssetsInDatabase) {
-        assetsWillBeBackup.removeWhere((e) => e.id == assetId);
-      }
-
-      if (assetsWillBeBackup.isEmpty) {
-        state = state.copyWith(backupProgress: BackUpProgressEnum.idle);
-      }
-
-      // Perform Backup
-      state = state.copyWith(cancelToken: CancellationToken());
-
-      final pmProgressHandler = Platform.isIOS ? PMProgressHandler() : null;
-
-      pmProgressHandler?.stream.listen((event) {
-        final double progress = event.progress;
-        state = state.copyWith(iCloudDownloadProgress: progress);
-      });
-
-      await _backupService.backupAsset(
-        assetsWillBeBackup,
-        state.cancelToken,
-        pmProgressHandler,
-        _onAssetUploaded,
-        _onUploadProgress,
-        _onSetCurrentBackupAsset,
-        _onBackupError,
-      );
-      await notifyBackgroundServiceCanRun();
-    } else {
+    if (!hasPermission) {
       openAppSettings();
+      return;
     }
+
+    await PhotoManager.clearFileCache();
+
+    final idsForBackup = await _db.deviceAssets
+        .filter()
+        .backupSelectionEqualTo(BackupSelection.select)
+        .idProperty()
+        .findAll();
+    final localAssetsToBackup = await _db.assets
+        .where()
+        .remoteIdIsNull()
+        .filter()
+        .anyOf(idsForBackup, (q, id) => q.localIdEqualTo(id))
+        .findAll();
+
+    final assetsToBackup =
+        await _backupService.remoteAlreadyUploaded(localAssetsToBackup);
+    if (assetsToBackup.isEmpty) {
+      log.info("No Asset On Device - Abort Backup Process");
+      state = state.copyWith(backupProgress: BackUpProgressEnum.idle);
+      return;
+    }
+
+    // Perform Backup
+    state = state.copyWith(cancelToken: CancellationToken());
+
+    final pmProgressHandler = Platform.isIOS ? PMProgressHandler() : null;
+
+    pmProgressHandler?.stream.listen((event) {
+      final double progress = event.progress;
+      state = state.copyWith(iCloudDownloadProgress: progress);
+    });
+
+    await _backupService.backupAsset(
+      assetsToBackup,
+      state.cancelToken,
+      pmProgressHandler,
+      _onAssetUploaded,
+      _onUploadProgress,
+      _onSetCurrentBackupAsset,
+      _onBackupError,
+    );
+
+    state.cancelToken.cancel();
+    state = state.copyWith(
+      backupProgress: BackUpProgressEnum.idle,
+      progressInPercentage: 0.0,
+    );
+    ref.invalidate(deviceAssetsProvider);
+    await notifyBackgroundServiceCanRun();
   }
 
   void _onBackupError(ErrorUploadAsset errorAssetInfo) {
@@ -296,37 +149,13 @@ class BackupNotifier extends StateNotifier<BackUpState> {
     String deviceId,
     bool isDuplicated,
   ) {
-    if (isDuplicated) {
-      state = state.copyWith(
-        allUniqueAssets: state.allUniqueAssets
-            .where((asset) => asset.localId != deviceAssetId)
-            .toSet(),
-      );
-    } else {
-      state = state.copyWith(
-        backedUpAssetsCount: state.backedUpAssetsCount + 1,
-        allAssetsInDatabase: [...state.allAssetsInDatabase, deviceAssetId],
-      );
-    }
-
-    updateServerInfo();
+    _serverInfoNotifier.getServerDiskInfo();
   }
 
   void _onUploadProgress(int sent, int total) {
     state = state.copyWith(
       progressInPercentage: (sent.toDouble() / total.toDouble() * 100),
     );
-  }
-
-  Future<void> updateServerInfo() async {
-    final serverInfo = await _serverInfoService.getServerInfo();
-
-    // Update server info
-    if (serverInfo != null) {
-      state = state.copyWith(
-        serverInfo: serverInfo,
-      );
-    }
   }
 
   Future<void> _resumeBackup() async {
@@ -340,7 +169,7 @@ class BackupNotifier extends StateNotifier<BackUpState> {
     }
 
     // Check if this device is enable backup by the user
-    if (state.autoBackup) {
+    if (ref.read(backupSettingsProvider).autoBackup) {
       // check if backup is already in process - then return
       if (state.backupProgress == BackUpProgressEnum.inProgress) {
         log.info("[_resumeBackup] Auto Backup is already in progress - abort");
@@ -367,16 +196,6 @@ class BackupNotifier extends StateNotifier<BackUpState> {
   Future<void> resumeBackup() async {
     final BackUpProgressEnum previous = state.backupProgress;
     state = state.copyWith(backupProgress: BackUpProgressEnum.inBackground);
-
-    // TODO: update album specific last backup time
-    final backupAlbums = await ref.read(backupAlbumsProvider.future);
-    List<BackupAlbum> selectedAlbums = backupAlbums.selectedBackupAlbums
-        .followedBy(backupAlbums.excludedBackupAlbums)
-        .map((e) {
-      e.lastBackup = DateTime.now();
-      return e;
-    }).toList();
-    await _db.writeTxn(() => _db.backupAlbums.putAll(selectedAlbums));
 
     // assumes the background service is currently running
     // if true, waits until it has stopped to start the backup
@@ -408,7 +227,7 @@ final backupProvider =
     StateNotifierProvider<BackupNotifier, BackUpState>((ref) {
   return BackupNotifier(
     ref.watch(backupServiceProvider),
-    ref.watch(serverInfoServiceProvider),
+    ref.watch(serverInfoProvider.notifier),
     ref.watch(authenticationProvider),
     ref.watch(backgroundServiceProvider),
     ref.watch(galleryPermissionNotifier.notifier),
