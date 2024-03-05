@@ -4,7 +4,6 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui' show DartPluginRegistrant, IsolateNameServer, PluginUtilities;
 import 'package:cancellation_token_http/http.dart';
-import 'package:collection/collection.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -19,7 +18,6 @@ import 'package:immich_mobile/modules/settings/services/app_settings.service.dar
 import 'package:immich_mobile/shared/models/store.dart';
 import 'package:immich_mobile/shared/services/api.service.dart';
 import 'package:immich_mobile/utils/backup_progress.dart';
-import 'package:immich_mobile/utils/diff.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider_ios/path_provider_ios.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -364,30 +362,17 @@ class BackgroundService {
       );
       if (backupOk) {
         await Store.delete(StoreKey.backupFailedSince);
-        final backupAlbums = [...selectedAlbums, ...excludedAlbums];
-        backupAlbums.sortBy((e) => e.id);
-        db.writeTxnSync(() {
-          final dbAlbums = db.backupAlbums.where().sortById().findAllSync();
-          final List<int> toDelete = [];
-          final List<BackupAlbum> toUpsert = [];
-          // stores the most recent `lastBackup` per album but always keeps the `selection` from the most recent DB state
-          diffSortedListsSync(
-            dbAlbums,
-            backupAlbums,
-            compare: (BackupAlbum a, BackupAlbum b) => a.id.compareTo(b.id),
-            both: (BackupAlbum a, BackupAlbum b) {
-              a.lastBackup = a.lastBackup.isAfter(b.lastBackup)
-                  ? a.lastBackup
-                  : b.lastBackup;
-              toUpsert.add(a);
-              return true;
-            },
-            onlyFirst: (BackupAlbum a) => toUpsert.add(a),
-            onlySecond: (BackupAlbum b) => toDelete.add(b.isarId),
-          );
-          db.backupAlbums.deleteAllSync(toDelete);
-          db.backupAlbums.putAllSync(toUpsert);
-        });
+        // TODO: update album specific last backup time
+        final backupAlbums = await db.backupAlbums
+            .filter()
+            .not()
+            .selectionEqualTo(BackupSelection.none)
+            .findAll();
+        List<BackupAlbum> selectedAlbums = backupAlbums.map((e) {
+          e.lastBackup = DateTime.now();
+          return e;
+        }).toList();
+        await db.writeTxn(() => db.backupAlbums.putAll(selectedAlbums));
       } else if (Store.tryGet(StoreKey.backupFailedSince) == null) {
         Store.put(StoreKey.backupFailedSince, DateTime.now());
         return false;

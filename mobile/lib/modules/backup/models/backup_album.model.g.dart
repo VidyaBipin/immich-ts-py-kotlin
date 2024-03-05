@@ -17,18 +17,23 @@ const BackupAlbumSchema = CollectionSchema(
   name: r'BackupAlbum',
   id: 8308487201128361847,
   properties: {
-    r'id': PropertySchema(
+    r'hashCode': PropertySchema(
       id: 0,
+      name: r'hashCode',
+      type: IsarType.long,
+    ),
+    r'id': PropertySchema(
+      id: 1,
       name: r'id',
       type: IsarType.string,
     ),
     r'lastBackup': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'lastBackup',
       type: IsarType.dateTime,
     ),
     r'selection': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'selection',
       type: IsarType.byte,
       enumMap: _BackupAlbumselectionEnumValueMap,
@@ -40,7 +45,14 @@ const BackupAlbumSchema = CollectionSchema(
   deserializeProp: _backupAlbumDeserializeProp,
   idName: r'isarId',
   indexes: {},
-  links: {},
+  links: {
+    r'album': LinkSchema(
+      id: 4803574038667272895,
+      name: r'album',
+      target: r'LocalAlbum',
+      single: true,
+    )
+  },
   embeddedSchemas: {},
   getId: _backupAlbumGetId,
   getLinks: _backupAlbumGetLinks,
@@ -64,9 +76,10 @@ void _backupAlbumSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.id);
-  writer.writeDateTime(offsets[1], object.lastBackup);
-  writer.writeByte(offsets[2], object.selection.index);
+  writer.writeLong(offsets[0], object.hashCode);
+  writer.writeString(offsets[1], object.id);
+  writer.writeDateTime(offsets[2], object.lastBackup);
+  writer.writeByte(offsets[3], object.selection.index);
 }
 
 BackupAlbum _backupAlbumDeserialize(
@@ -76,10 +89,11 @@ BackupAlbum _backupAlbumDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = BackupAlbum(
-    reader.readString(offsets[0]),
-    reader.readDateTime(offsets[1]),
-    _BackupAlbumselectionValueEnumMap[reader.readByteOrNull(offsets[2])] ??
-        BackupSelection.none,
+    id: reader.readString(offsets[1]),
+    lastBackup: reader.readDateTime(offsets[2]),
+    selection:
+        _BackupAlbumselectionValueEnumMap[reader.readByteOrNull(offsets[3])] ??
+            BackupSelection.none,
   );
   return object;
 }
@@ -92,10 +106,12 @@ P _backupAlbumDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 1:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 2:
+      return (reader.readDateTime(offset)) as P;
+    case 3:
       return (_BackupAlbumselectionValueEnumMap[
               reader.readByteOrNull(offset)] ??
           BackupSelection.none) as P;
@@ -120,11 +136,13 @@ Id _backupAlbumGetId(BackupAlbum object) {
 }
 
 List<IsarLinkBase<dynamic>> _backupAlbumGetLinks(BackupAlbum object) {
-  return [];
+  return [object.album];
 }
 
 void _backupAlbumAttach(
-    IsarCollection<dynamic> col, Id id, BackupAlbum object) {}
+    IsarCollection<dynamic> col, Id id, BackupAlbum object) {
+  object.album.attach(col, col.isar.collection<LocalAlbum>(), r'album', id);
+}
 
 extension BackupAlbumQueryWhereSort
     on QueryBuilder<BackupAlbum, BackupAlbum, QWhere> {
@@ -209,6 +227,61 @@ extension BackupAlbumQueryWhere
 
 extension BackupAlbumQueryFilter
     on QueryBuilder<BackupAlbum, BackupAlbum, QFilterCondition> {
+  QueryBuilder<BackupAlbum, BackupAlbum, QAfterFilterCondition> hashCodeEqualTo(
+      int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'hashCode',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<BackupAlbum, BackupAlbum, QAfterFilterCondition>
+      hashCodeGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'hashCode',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<BackupAlbum, BackupAlbum, QAfterFilterCondition>
+      hashCodeLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'hashCode',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<BackupAlbum, BackupAlbum, QAfterFilterCondition> hashCodeBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'hashCode',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
   QueryBuilder<BackupAlbum, BackupAlbum, QAfterFilterCondition> idEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -510,10 +583,35 @@ extension BackupAlbumQueryObject
     on QueryBuilder<BackupAlbum, BackupAlbum, QFilterCondition> {}
 
 extension BackupAlbumQueryLinks
-    on QueryBuilder<BackupAlbum, BackupAlbum, QFilterCondition> {}
+    on QueryBuilder<BackupAlbum, BackupAlbum, QFilterCondition> {
+  QueryBuilder<BackupAlbum, BackupAlbum, QAfterFilterCondition> album(
+      FilterQuery<LocalAlbum> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.link(q, r'album');
+    });
+  }
+
+  QueryBuilder<BackupAlbum, BackupAlbum, QAfterFilterCondition> albumIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.linkLength(r'album', 0, true, 0, true);
+    });
+  }
+}
 
 extension BackupAlbumQuerySortBy
     on QueryBuilder<BackupAlbum, BackupAlbum, QSortBy> {
+  QueryBuilder<BackupAlbum, BackupAlbum, QAfterSortBy> sortByHashCode() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hashCode', Sort.asc);
+    });
+  }
+
+  QueryBuilder<BackupAlbum, BackupAlbum, QAfterSortBy> sortByHashCodeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hashCode', Sort.desc);
+    });
+  }
+
   QueryBuilder<BackupAlbum, BackupAlbum, QAfterSortBy> sortById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -553,6 +651,18 @@ extension BackupAlbumQuerySortBy
 
 extension BackupAlbumQuerySortThenBy
     on QueryBuilder<BackupAlbum, BackupAlbum, QSortThenBy> {
+  QueryBuilder<BackupAlbum, BackupAlbum, QAfterSortBy> thenByHashCode() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hashCode', Sort.asc);
+    });
+  }
+
+  QueryBuilder<BackupAlbum, BackupAlbum, QAfterSortBy> thenByHashCodeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'hashCode', Sort.desc);
+    });
+  }
+
   QueryBuilder<BackupAlbum, BackupAlbum, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -604,6 +714,12 @@ extension BackupAlbumQuerySortThenBy
 
 extension BackupAlbumQueryWhereDistinct
     on QueryBuilder<BackupAlbum, BackupAlbum, QDistinct> {
+  QueryBuilder<BackupAlbum, BackupAlbum, QDistinct> distinctByHashCode() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'hashCode');
+    });
+  }
+
   QueryBuilder<BackupAlbum, BackupAlbum, QDistinct> distinctById(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -629,6 +745,12 @@ extension BackupAlbumQueryProperty
   QueryBuilder<BackupAlbum, int, QQueryOperations> isarIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'isarId');
+    });
+  }
+
+  QueryBuilder<BackupAlbum, int, QQueryOperations> hashCodeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'hashCode');
     });
   }
 

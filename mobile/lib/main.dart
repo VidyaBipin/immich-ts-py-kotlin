@@ -9,20 +9,19 @@ import 'package:flutter/services.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:immich_mobile/extensions/build_context_extensions.dart';
+import 'package:immich_mobile/modules/album/models/album.model.dart';
+import 'package:immich_mobile/modules/backup/models/backup_album.model.dart';
+import 'package:immich_mobile/shared/models/device_asset.dart';
 import 'package:timezone/data/latest.dart';
 import 'package:immich_mobile/constants/locales.dart';
 import 'package:immich_mobile/modules/backup/background_service/background.service.dart';
-import 'package:immich_mobile/modules/backup/models/backup_album.model.dart';
 import 'package:immich_mobile/modules/backup/models/duplicated_asset.model.dart';
 import 'package:immich_mobile/routing/router.dart';
 import 'package:immich_mobile/routing/tab_navigation_observer.dart';
 import 'package:immich_mobile/shared/cache/widgets_binding.dart';
-import 'package:immich_mobile/shared/models/album.dart';
-import 'package:immich_mobile/shared/models/android_device_asset.dart';
 import 'package:immich_mobile/shared/models/asset.dart';
 import 'package:immich_mobile/shared/models/etag.dart';
 import 'package:immich_mobile/shared/models/exif_info.dart';
-import 'package:immich_mobile/shared/models/ios_device_asset.dart';
 import 'package:immich_mobile/shared/models/logger_message.model.dart';
 import 'package:immich_mobile/shared/models/store.dart';
 import 'package:immich_mobile/shared/models/user.dart';
@@ -73,14 +72,15 @@ Future<void> initApp() async {
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
     log.severe(
-      'FlutterError - Catch all',
-      "${details.toString()}\nException: ${details.exception}\nLibrary: ${details.library}\nContext: ${details.context}",
+      'FlutterError - Catch all error: ${details.toString()} - ${details.exception} - ${details.library} - ${details.context} - ${details.stack}',
+      details,
       details.stack,
     );
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
-    log.severe('PlatformDispatcher - Catch all', error, stack);
+    log.severe('PlatformDispatcher - Catch all error: $error', error, stack);
+    debugPrint("PlatformDispatcher - Catch all error: $error $stack");
     return true;
   };
 
@@ -94,14 +94,14 @@ Future<Isar> loadDb() async {
       StoreValueSchema,
       ExifInfoSchema,
       AssetSchema,
-      AlbumSchema,
-      UserSchema,
       BackupAlbumSchema,
+      LocalAlbumSchema,
+      RemoteAlbumSchema,
+      UserSchema,
       DuplicatedAssetSchema,
       LoggerMessageSchema,
       ETagSchema,
-      if (Platform.isAndroid) AndroidDeviceAssetSchema,
-      if (Platform.isIOS) IOSDeviceAssetSchema,
+      DeviceAssetSchema,
     ],
     directory: dir.path,
     maxSizeMiB: 256,
