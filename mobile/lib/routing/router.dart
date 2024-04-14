@@ -212,7 +212,7 @@ class AppRouter extends _$AppRouter {
       transitionsBuilder: TransitionsBuilders.slideLeft,
       durationInMilliseconds: 200,
     ),
-    CustomRoute(
+    AutoRoute(
       page: MapLocationPickerRoute.page,
       guards: [_authGuard, _duplicateGuard],
     ),
