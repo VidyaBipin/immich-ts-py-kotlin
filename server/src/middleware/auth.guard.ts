@@ -101,7 +101,7 @@ export class AuthGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<AuthRequest>();
 
-    const authDto = await this.authService.validate(request.headers, request.query as Record<string, string>);
+    const authDto = await this.authService.validate(request.headers, request.query as Record<string, string>, request.socket.remoteAddress);
     if (authDto.sharedLink && !isSharedRoute) {
       this.logger.warn(`Denied access to non-shared route: ${request.path}`);
       return false;
