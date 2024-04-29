@@ -16,6 +16,7 @@
   import type { PageData } from './$types';
   import { handlePromiseError } from '$lib/utils';
   import { navigate } from '$lib/utils/navigation';
+  import { currentMediaBreakpoint, MediaBreakpoint } from '$lib/stores/media-breakpoint.store.js';
 
   export let data: PageData;
 
@@ -108,11 +109,11 @@
 </script>
 
 {#if $featureFlags.loaded && $featureFlags.map}
-  <UserPageLayout title={data.meta.title}>
-    <div class="isolate h-full w-full">
+  <UserPageLayout title={$currentMediaBreakpoint >= MediaBreakpoint.MD ? data.meta.title : undefined} noMargin>
+    <div class="h-full w-full md:p-2">
       <Map bind:mapMarkers bind:showSettingsModal on:selected={(event) => onViewAssets(event.detail)} />
-    </div></UserPageLayout
-  >
+    </div>
+  </UserPageLayout>
   <Portal target="body">
     {#if $showAssetViewer}
       {#await import('../../../../../lib/components/asset-viewer/asset-viewer.svelte') then { default: AssetViewer }}

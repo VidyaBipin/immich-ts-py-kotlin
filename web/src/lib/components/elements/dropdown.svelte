@@ -38,6 +38,16 @@
 
   export let render: (item: T) => string | RenderedOption = String;
 
+  let divElement: HTMLElement;
+  let dropdownElement: HTMLElement;
+  let left = 0;
+
+  $: if (dropdownElement) {
+    const divPosX = divElement.getBoundingClientRect().x;
+    const dropdownWidth = dropdownElement.getBoundingClientRect().width;
+    left = Math.min(window.innerWidth - dropdownWidth, divPosX);
+  }
+
   const handleClickOutside = () => {
     if (!controlable) {
       showMenu = false;
@@ -72,22 +82,24 @@
   $: renderedSelectedOption = renderOption(selectedOption);
 </script>
 
-<div use:clickOutside on:outclick={handleClickOutside} on:escape={handleClickOutside}>
+<div bind:this={divElement} use:clickOutside on:outclick={handleClickOutside} on:escape={handleClickOutside}>
   <!-- BUTTON TITLE -->
-  <LinkButton on:click={() => (showMenu = true)} fullwidth {title}>
+  <LinkButton on:click={() => (showMenu = !showMenu)} fullwidth {title}>
     <div class="flex place-items-center gap-2 text-sm">
       {#if renderedSelectedOption?.icon}
         <Icon path={renderedSelectedOption.icon} size="18" />
       {/if}
-      <p class={hideTextOnSmallScreen ? 'hidden sm:block' : ''}>{renderedSelectedOption.title}</p>
+      <p class={hideTextOnSmallScreen ? 'hidden md:block' : ''}>{renderedSelectedOption.title}</p>
     </div>
   </LinkButton>
 
   <!-- DROP DOWN MENU -->
   {#if showMenu}
     <div
+      bind:this={dropdownElement}
       transition:fly={{ y: -30, duration: 250 }}
-      class="text-sm font-medium fixed z-50 flex min-w-[250px] max-h-[70vh] overflow-y-auto immich-scrollbar flex-col rounded-2xl bg-gray-100 py-2 text-black shadow-lg dark:bg-gray-700 dark:text-white {className}"
+      class="text-sm font-medium fixed z-50 flex min-w-[min(250px,100vw)] max-w-[100vw] max-h-[70vh] overflow-y-auto immich-scrollbar flex-col rounded-2xl bg-gray-100 py-2 text-black shadow-lg dark:bg-gray-700 dark:text-white {className}"
+      style:left="{left}px"
     >
       {#each options as option (option)}
         {@const renderedOption = renderOption(option)}

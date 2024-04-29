@@ -1,8 +1,18 @@
+const defaultTheme = require('tailwindcss/defaultTheme');
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ['./src/**/*.{html,js,svelte,ts}'],
   darkMode: 'class',
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   theme: {
+    screens: {
+      ...defaultTheme.screens,
+      xs: '504px',
+      '2xs': '368px',
+    },
     extend: {
       colors: {
         // Light Theme
@@ -29,9 +39,6 @@ module.exports = {
       },
       spacing: {
         18: '4.5rem',
-      },
-      screens: {
-        tall: { raw: '(min-height: 800px)' },
       },
     },
   },

@@ -55,37 +55,37 @@ export const sortOptionsMetadata: AlbumSortOptionMetadata[] = [
     id: AlbumSortBy.Title,
     text: 'Title',
     defaultOrder: SortOrder.Asc,
-    columnStyle: 'text-left w-8/12 sm:w-4/12 md:w-4/12 md:w-4/12 xl:w-[30%] 2xl:w-[40%]',
+    columnStyle: 'text-left w-full sm:w-[60%] md:w-[42%] xl:w-[30%] 2xl:w-[40%]',
   },
   {
     id: AlbumSortBy.ItemCount,
     text: 'Number of items',
     defaultOrder: SortOrder.Desc,
-    columnStyle: 'text-center w-4/12 m:w-2/12 md:w-2/12 xl:w-[15%] 2xl:w-[12%]',
+    columnStyle: 'text-center hidden md:block md:w-[18%] xl:w-[15%] 2xl:w-[12%]',
   },
   {
     id: AlbumSortBy.DateModified,
     text: 'Date modified',
     defaultOrder: SortOrder.Desc,
-    columnStyle: 'text-center hidden sm:block w-3/12 xl:w-[15%] 2xl:w-[12%]',
+    columnStyle: 'text-center hidden xl:block xl:w-[15%] 2xl:w-[12%]',
   },
   {
     id: AlbumSortBy.DateCreated,
     text: 'Date created',
     defaultOrder: SortOrder.Desc,
-    columnStyle: 'text-center hidden sm:block w-3/12 xl:w-[15%] 2xl:w-[12%]',
+    columnStyle: 'text-center hidden xl:block xl:w-[15%] 2xl:w-[12%]',
   },
   {
     id: AlbumSortBy.MostRecentPhoto,
     text: 'Most recent photo',
     defaultOrder: SortOrder.Desc,
-    columnStyle: 'text-center hidden xl:block xl:w-[15%] 2xl:w-[12%]',
+    columnStyle: 'text-center hidden sm:block sm:w-[20%] xl:w-[15%] 2xl:w-[12%]',
   },
   {
     id: AlbumSortBy.OldestPhoto,
     text: 'Oldest photo',
     defaultOrder: SortOrder.Desc,
-    columnStyle: 'text-center hidden xl:block xl:w-[15%] 2xl:w-[12%]',
+    columnStyle: 'text-center hidden sm:block sm:w-[20%] xl:w-[15%] 2xl:w-[12%]',
   },
 ];
 

@@ -2,6 +2,7 @@
   import type { SearchLocationFilter } from './search-location-section.svelte';
   import type { SearchDisplayFilters } from './search-display-section.svelte';
   import type { SearchDateFilter } from './search-date-section.svelte';
+  import type { SearchCameraFilter } from './search-camera-section.svelte';
 
   export enum MediaType {
     All = 'all',
@@ -23,12 +24,13 @@
 
 <script lang="ts">
   import Button from '$lib/components/elements/buttons/button.svelte';
+  import { windowViewport } from '$lib/stores/viewport.store';
   import { AssetTypeEnum, type SmartSearchDto, type MetadataSearchDto } from '@immich/sdk';
   import { createEventDispatcher } from 'svelte';
   import { fly } from 'svelte/transition';
   import SearchPeopleSection from './search-people-section.svelte';
   import SearchLocationSection from './search-location-section.svelte';
-  import SearchCameraSection, { type SearchCameraFilter } from './search-camera-section.svelte';
+  import SearchCameraSection from './search-camera-section.svelte';
   import SearchDateSection from './search-date-section.svelte';
   import SearchMediaSection from './search-media-section.svelte';
   import { parseUtcDate } from '$lib/utils/date-time';
@@ -36,6 +38,29 @@
   import SearchTextSection from './search-text-section.svelte';
 
   export let searchQuery: MetadataSearchDto | SmartSearchDto;
+  export let searchBar: HTMLElement;
+
+  $: if (searchBar) {
+    const searchBarRect = searchBar.getBoundingClientRect();
+    const minMargin = 50;
+    const minWidth = 750;
+
+    filterBoxLeft = 0;
+    filterBoxMinWidth = 0;
+
+    if (searchBarRect.width < minWidth) {
+      // Larger than the search bar.
+      const maxWidth = Math.max($windowViewport.width - minMargin, 0);
+      filterBoxMinWidth = Math.min(maxWidth, minWidth);
+
+      if ($windowViewport.width < 2 * searchBarRect.left + filterBoxMinWidth) {
+        // Window-centered
+        const marginLeft = searchBarRect.left;
+        const marginRight = $windowViewport.width - (searchBarRect.left + filterBoxMinWidth);
+        filterBoxLeft = (marginLeft + marginRight) / 2 - marginLeft;
+      }
+    }
+  }
 
   const parseOptionalDate = (dateString?: string) => (dateString ? parseUtcDate(dateString) : undefined);
   const toStartOfDayDate = (dateString: string) => parseUtcDate(dateString)?.startOf('day').toISODate() || undefined;
@@ -72,6 +97,8 @@
   };
 
   let filterBoxWidth = 0;
+  let filterBoxLeft = 0;
+  let filterBoxMinWidth = 0;
 
   const resetForm = () => {
     filter = {
@@ -116,7 +143,9 @@
 <div
   bind:clientWidth={filterBoxWidth}
   transition:fly={{ y: 25, duration: 250 }}
-  class="absolute w-full rounded-b-3xl border border-t-0 border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-immich-dark-gray dark:text-gray-300"
+  class="relative w-full -top-[1px] rounded-b-3xl border border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-immich-dark-gray dark:text-gray-300"
+  style:left="{filterBoxLeft}px"
+  style:min-width="{filterBoxMinWidth}px"
 >
   <form
     id="search-filter-form"

@@ -7,23 +7,29 @@
   import Icon from '$lib/components/elements/icon.svelte';
   import { featureFlags } from '$lib/stores/server-config.store';
   import { resetSavedUser, user } from '$lib/stores/user.store';
+  import { isSideBarOpen } from '$lib/stores/side-bar.store';
   import { clickOutside } from '$lib/utils/click-outside';
   import { logout } from '@immich/sdk';
-  import { mdiCog, mdiMagnify, mdiTrayArrowUp } from '@mdi/js';
+  import { mdiMagnify, mdiMenu, mdiTrayArrowUp, mdiWrench } from '@mdi/js';
   import { createEventDispatcher } from 'svelte';
   import { fade, fly } from 'svelte/transition';
-  import { AppRoute } from '../../../constants';
+  import { md } from '$lib/utils/media-breakpoint';
+  import { AppRoute } from '$lib/constants';
   import ImmichLogo from '../immich-logo.svelte';
   import SearchBar from '../search-bar/search-bar.svelte';
   import ThemeButton from '../theme-button.svelte';
   import UserAvatar from '../user-avatar.svelte';
   import AccountInfoPanel from './account-info-panel.svelte';
+  import { isUserUsingMouse } from '$lib/stores/input-device.store';
 
   export let showUploadButton = true;
 
   let shouldShowAccountInfo = false;
   let shouldShowAccountInfoPanel = false;
-  let innerWidth: number;
+  let showLogoText = false;
+  let showSearchBar = false;
+  let isSearchBarFullWidth = true;
+
   const dispatch = createEventDispatcher<{
     uploadClicked: void;
   }>();
@@ -37,85 +43,87 @@
     }
     resetSavedUser();
   };
-</script>
 
-<svelte:window bind:innerWidth />
+  const onSmallScreenDisplay = () => {
+    showLogoText = false;
+    isSearchBarFullWidth = true;
+  };
+
+  const onMediumScreenDisplay = () => {
+    showLogoText = true;
+    isSearchBarFullWidth = false;
+    showSearchBar = false;
+  };
+</script>
 
 <section id="dashboard-navbar" class="fixed z-[900] h-[var(--navbar-height)] w-screen text-sm">
   <SkipLink>Skip to content</SkipLink>
   <div
-    class="grid h-full grid-cols-[theme(spacing.18)_auto] items-center border-b bg-immich-bg py-2 dark:border-b-immich-dark-gray dark:bg-immich-dark-bg md:grid-cols-[theme(spacing.64)_auto]"
+    class="relative grid h-full grid-cols-[min-content_theme(spacing.18)_auto] items-center border-b bg-immich-bg py-2 dark:border-b-immich-dark-gray dark:bg-immich-dark-bg md:grid-cols-[min-content_theme(spacing.40)_auto]"
+    use:md={{
+      match: onMediumScreenDisplay,
+      unmatch: onSmallScreenDisplay,
+    }}
   >
+    <div class="flex">
+      <div class="ml-4 lg:hidden" id="sidebar-toggle-button">
+        <IconButton title="Menu" on:click={() => ($isSideBarOpen = !$isSideBarOpen)}>
+          <Icon path={mdiMenu} class="h-6 w-6" />
+        </IconButton>
+      </div>
+    </div>
     <a data-sveltekit-preload-data="hover" class="ml-4" href={AppRoute.PHOTOS}>
-      <ImmichLogo width="55%" noText={innerWidth < 768} />
+      <ImmichLogo class="w-[72%] md:w-[92%]" noText={!showLogoText} />
     </a>
-    <div class="flex justify-between gap-16 pr-6">
-      <div class="hidden w-full max-w-5xl flex-1 pl-4 tall:pl-0 sm:block">
-        {#if $featureFlags.search}
-          <SearchBar grayTheme={true} />
+
+    <div class="flex justify-between xs:gap-6 pr-6">
+      <div class="{isSearchBarFullWidth ? 'flex' : 'hidden'} sm:flex sm:w-full max-w-5xl sm:pl-4 lg:pl-24">
+        {#if $featureFlags.search && (!isSearchBarFullWidth || showSearchBar)}
+          <SearchBar grayTheme fullWidth={isSearchBarFullWidth} bind:isOpen={showSearchBar} />
         {/if}
       </div>
 
-      <section class="flex place-items-center justify-end gap-4 max-sm:w-full">
-        {#if $featureFlags.search}
-          <a href={AppRoute.SEARCH} id="search-button" class="pl-4 sm:hidden">
-            <IconButton title="Search">
-              <div class="flex gap-2">
-                <Icon path={mdiMagnify} size="1.5em" />
-              </div>
-            </IconButton>
-          </a>
-        {/if}
-
-        <ThemeButton />
-
-        {#if !$page.url.pathname.includes('/admin') && showUploadButton}
-          <div in:fly={{ x: 50, duration: 250 }}>
-            <LinkButton on:click={() => dispatch('uploadClicked')}>
-              <div class="flex gap-2">
-                <Icon path={mdiTrayArrowUp} size="1.5em" />
-                <span class="hidden md:block">Upload</span>
-              </div>
-            </LinkButton>
-          </div>
-        {/if}
-
-        {#if $user.isAdmin}
-          <a
-            data-sveltekit-preload-data="hover"
-            href={AppRoute.ADMIN_USER_MANAGEMENT}
-            aria-label="Administration"
-            aria-current={$page.url.pathname.includes('/admin') ? 'page' : null}
-          >
-            <div
-              class="inline-flex items-center justify-center transition-colors dark:text-immich-dark-fg p-2 font-medium rounded-lg"
-            >
-              <div class="hidden sm:block">
-                <span
-                  class={$page.url.pathname.includes('/admin')
-                    ? 'item text-immich-primary underline dark:text-immich-dark-primary'
-                    : ''}
-                >
-                  Administration
-                </span>
-              </div>
-              <div class="block sm:hidden" aria-hidden="true">
-                <Icon
-                  path={mdiCog}
-                  size="1.5em"
-                  class="dark:text-immich-dark-fg {$page.url.pathname.includes('/admin')
-                    ? 'text-immich-primary dark:text-immich-dark-primary'
-                    : ''}"
-                />
-                <div
-                  class={$page.url.pathname.includes('/admin')
-                    ? 'border-t-1 mx-auto block w-2/3 border-immich-primary dark:border-immich-dark-primary'
-                    : 'hidden'}
-                />
-              </div>
+      <section class="flex place-items-center justify-end gap-2 max-sm:w-full">
+        <div class="md:hidden">
+          <IconButton title="Search" on:click={() => (showSearchBar = true)}>
+            <div class="flex gap-2">
+              <Icon path={mdiMagnify} size="1.5em" />
             </div>
-          </a>
-        {/if}
+          </IconButton>
+        </div>
+
+        <div class="hidden sm:flex place-items-center justify-end gap-2">
+          <ThemeButton />
+
+          {#if !$page.url.pathname.includes('/admin') && showUploadButton}
+            <div in:fly={{ x: 50, duration: 250 }}>
+              <LinkButton title="Upload" on:click={() => dispatch('uploadClicked')}>
+                <div class="flex gap-2">
+                  <Icon path={mdiTrayArrowUp} size="1.5em" />
+                  <span class="hidden lg:block">Upload</span>
+                </div>
+              </LinkButton>
+            </div>
+          {/if}
+
+          {#if $user.isAdmin}
+            {@const isAdminPage = $page.url.pathname.includes('/admin')}
+            {@const buttonCss = isAdminPage ? 'text-immich-primary dark:text-immich-dark-primary' : ''}
+            <a
+              data-sveltekit-preload-data="hover"
+              href={AppRoute.ADMIN_USER_MANAGEMENT}
+              aria-label="Administration"
+              aria-current={isAdminPage ? 'page' : null}
+            >
+              <LinkButton title="Administration">
+                <div class="flex gap-2 {buttonCss}">
+                  <Icon path={mdiWrench} size="1.5em" />
+                  <span class="hidden lg:block">Administration</span>
+                </div>
+              </LinkButton>
+            </a>
+          {/if}
+        </div>
 
         <div
           use:clickOutside
@@ -123,10 +131,8 @@
           on:escape={() => (shouldShowAccountInfoPanel = false)}
         >
           <button
-            class="flex"
-            on:mouseover={() => (shouldShowAccountInfo = true)}
-            on:focus={() => (shouldShowAccountInfo = true)}
-            on:blur={() => (shouldShowAccountInfo = false)}
+            class="flex ml-2"
+            on:mouseenter={() => (shouldShowAccountInfo = true)}
             on:mouseleave={() => (shouldShowAccountInfo = false)}
             on:click={() => (shouldShowAccountInfoPanel = !shouldShowAccountInfoPanel)}
           >
@@ -135,7 +141,7 @@
             {/key}
           </button>
 
-          {#if shouldShowAccountInfo && !shouldShowAccountInfoPanel}
+          {#if shouldShowAccountInfo && !shouldShowAccountInfoPanel && $isUserUsingMouse}
             <div
               in:fade={{ delay: 500, duration: 150 }}
               out:fade={{ delay: 200, duration: 150 }}
