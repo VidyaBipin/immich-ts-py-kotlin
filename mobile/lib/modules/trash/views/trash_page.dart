@@ -44,7 +44,7 @@ class TrashPage extends HookConsumerWidget {
       if (context.mounted) {
         ImmichToast.show(
           context: context,
-          msg: 'Emptied trash',
+          msg: 'toast_emptied_trash'.tr(),
           gravity: ToastGravity.BOTTOM,
         );
       }
@@ -76,8 +76,8 @@ class TrashPage extends HookConsumerWidget {
             if (context.mounted) {
               ImmichToast.show(
                 context: context,
-                msg:
-                    '${selection.value.length} $assetOrAssets deleted permanently',
+                msg: 'toast_${assetOrAssets}_deleted_permanently'
+                    .tr(args: [selection.value.length.toString()]),
                 gravity: ToastGravity.BOTTOM,
               );
             }
@@ -118,8 +118,8 @@ class TrashPage extends HookConsumerWidget {
           if (result && context.mounted) {
             ImmichToast.show(
               context: context,
-              msg:
-                  '${selection.value.length} $assetOrAssets restored successfully',
+              msg: 'toast_${assetOrAssets}_restored'
+                  .tr(args: [selection.value.length.toString()]),
               gravity: ToastGravity.BOTTOM,
             );
           }

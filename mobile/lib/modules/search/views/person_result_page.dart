@@ -83,6 +83,8 @@ class PersonResultPage extends HookConsumerWidget {
                   Text(
                     'search_page_person_add_name_subtitle',
                     style: context.textTheme.labelLarge,
+                    maxLines: 2,
+                    softWrap: true,
                   ).tr(),
                 ],
               )
@@ -127,9 +129,11 @@ class PersonResultPage extends HookConsumerWidget {
                   },
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.only(left: 16.0),
-                child: buildTitleBlock(),
+              Flexible(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 16.0),
+                  child: buildTitleBlock(),
+                ),
               ),
             ],
           ),

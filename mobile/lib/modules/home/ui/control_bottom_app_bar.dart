@@ -169,7 +169,7 @@ class ControlBottomAppBar extends HookConsumerWidget {
           ),
         if (hasRemote && onDeleteServer != null)
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 85),
+            constraints: const BoxConstraints(maxWidth: 90),
             child: ControlBoxButton(
               iconData: Icons.cloud_off_outlined,
               label: trashEnabled
@@ -192,7 +192,7 @@ class ControlBottomAppBar extends HookConsumerWidget {
           ),
         if (hasLocal && onDeleteLocal != null)
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 85),
+            constraints: const BoxConstraints(maxWidth: 90),
             child: ControlBoxButton(
               iconData: Icons.no_cell_rounded,
               label: "control_bottom_app_bar_delete_from_local".tr(),
@@ -216,7 +216,7 @@ class ControlBottomAppBar extends HookConsumerWidget {
           ),
         if (hasRemote && onEditTime != null)
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 95),
+            constraints: const BoxConstraints(maxWidth: 90),
             child: ControlBoxButton(
               iconData: Icons.edit_calendar_outlined,
               label: "control_bottom_app_bar_edit_time".tr(),
@@ -272,7 +272,7 @@ class ControlBottomAppBar extends HookConsumerWidget {
 
     return DraggableScrollableSheet(
       controller: scrollController,
-      initialChildSize: hasRemote ? 0.35 : bottomPadding,
+      initialChildSize: hasRemote ? 0.40 : bottomPadding,
       minChildSize: bottomPadding,
       maxChildSize: hasRemote ? 0.65 : bottomPadding,
       snap: true,
@@ -297,15 +297,26 @@ class ControlBottomAppBar extends HookConsumerWidget {
               SliverToBoxAdapter(
                 child: Column(
                   children: <Widget>[
-                    const SizedBox(height: 12),
-                    const CustomDraggingHandle(),
-                    const SizedBox(height: 12),
                     SizedBox(
-                      height: 100,
-                      child: ListView(
-                        shrinkWrap: true,
-                        scrollDirection: Axis.horizontal,
-                        children: renderActionButtons(),
+                      height: 140,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          const SizedBox(height: 8),
+                          const CustomDraggingHandle(),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 112,
+                            child: Align(
+                              alignment: Alignment.center,
+                              child: ListView(
+                                shrinkWrap: true,
+                                scrollDirection: Axis.horizontal,
+                                children: renderActionButtons(),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     if (hasRemote)

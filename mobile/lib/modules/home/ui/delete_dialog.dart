@@ -38,15 +38,17 @@ class DeleteLocalOnlyDialog extends StatelessWidget {
 
     return AlertDialog(
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(10)),
+        borderRadius: BorderRadius.all(Radius.circular(16)),
       ),
       title: const Text("delete_dialog_title").tr(),
       content: const Text("delete_dialog_alert_local_non_backed_up").tr(),
+      actionsOverflowAlignment: OverflowBarAlignment.end,
       actions: [
         TextButton(
           onPressed: () => context.pop(),
           child: Text(
             "delete_dialog_cancel",
+            textAlign: TextAlign.end,
             style: TextStyle(
               color: context.primaryColor,
               fontWeight: FontWeight.bold,
@@ -57,6 +59,7 @@ class DeleteLocalOnlyDialog extends StatelessWidget {
           onPressed: onDeleteBackedUpOnly,
           child: Text(
             "delete_local_dialog_ok_backed_up_only",
+            textAlign: TextAlign.end,
             style: TextStyle(
               color: context.colorScheme.tertiary,
               fontWeight: FontWeight.bold,
@@ -67,6 +70,7 @@ class DeleteLocalOnlyDialog extends StatelessWidget {
           onPressed: onForceDelete,
           child: Text(
             "delete_local_dialog_ok_force",
+            textAlign: TextAlign.end,
             style: TextStyle(
               color: Colors.red[400],
               fontWeight: FontWeight.bold,
