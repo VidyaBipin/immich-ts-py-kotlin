@@ -239,6 +239,7 @@ export type AssetBulkUpdateDto = {
     ids: string[];
     isArchived?: boolean;
     isFavorite?: boolean;
+    keepTimeUnchanged?: boolean;
     latitude?: number;
     longitude?: number;
     removeParent?: boolean;
@@ -319,6 +320,7 @@ export type UpdateAssetDto = {
     description?: string;
     isArchived?: boolean;
     isFavorite?: boolean;
+    keepTimeUnchanged?: boolean;
     latitude?: number;
     longitude?: number;
 };

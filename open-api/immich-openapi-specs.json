@@ -6902,6 +6902,9 @@
           "isFavorite": {
             "type": "boolean"
           },
+          "keepTimeUnchanged": {
+            "type": "boolean"
+          },
           "latitude": {
             "type": "number"
           },
@@ -10716,6 +10719,9 @@
             "type": "boolean"
           },
           "isFavorite": {
+            "type": "boolean"
+          },
+          "keepTimeUnchanged": {
             "type": "boolean"
           },
           "latitude": {
