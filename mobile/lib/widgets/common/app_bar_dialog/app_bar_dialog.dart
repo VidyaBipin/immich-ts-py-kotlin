@@ -9,7 +9,6 @@ import 'package:immich_mobile/providers/backup/backup.provider.dart';
 import 'package:immich_mobile/providers/backup/manual_upload.provider.dart';
 import 'package:immich_mobile/providers/authentication.provider.dart';
 import 'package:immich_mobile/routing/router.dart';
-import 'package:immich_mobile/providers/asset.provider.dart';
 import 'package:immich_mobile/providers/user.provider.dart';
 import 'package:immich_mobile/providers/websocket.provider.dart';
 import 'package:immich_mobile/widgets/common/app_bar_dialog/app_bar_profile_info.dart';
@@ -116,10 +115,8 @@ class ImmichAppBarDialog extends HookConsumerWidget {
                 ok: "app_bar_signout_dialog_ok",
                 onOk: () async {
                   await ref.read(authenticationProvider.notifier).logout();
-
                   ref.read(manualUploadProvider.notifier).cancelBackup();
                   ref.read(backupProvider.notifier).cancelBackup();
-                  ref.read(assetProvider.notifier).clearAllAsset();
                   ref.read(websocketProvider.notifier).disconnect();
                   context.replaceRoute(const LoginRoute());
                 },
