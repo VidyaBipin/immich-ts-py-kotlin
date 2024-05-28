@@ -14,6 +14,7 @@ import { ReportController } from 'src/controllers/file-report.controller';
 import { JobController } from 'src/controllers/job.controller';
 import { LibraryController } from 'src/controllers/library.controller';
 import { MemoryController } from 'src/controllers/memory.controller';
+import { MigrateController } from 'src/controllers/migrate.controller';
 import { OAuthController } from 'src/controllers/oauth.controller';
 import { PartnerController } from 'src/controllers/partner.controller';
 import { PersonController } from 'src/controllers/person.controller';
@@ -46,6 +47,7 @@ export const controllers = [
   JobController,
   LibraryController,
   MemoryController,
+  MigrateController,
   OAuthController,
   PartnerController,
   PersonController,
