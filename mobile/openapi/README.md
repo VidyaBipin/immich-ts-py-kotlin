@@ -121,6 +121,7 @@ Class | Method | HTTP request | Description
 *DuplicateApi* | [**getAssetDuplicates**](doc//DuplicateApi.md#getassetduplicates) | **GET** /duplicates | 
 *FaceApi* | [**getFaces**](doc//FaceApi.md#getfaces) | **GET** /faces | 
 *FaceApi* | [**reassignFacesById**](doc//FaceApi.md#reassignfacesbyid) | **PUT** /faces/{id} | 
+*FaceApi* | [**unassignFace**](doc//FaceApi.md#unassignface) | **DELETE** /faces/{id} | 
 *FileReportApi* | [**fixAuditFiles**](doc//FileReportApi.md#fixauditfiles) | **POST** /reports/fix | 
 *FileReportApi* | [**getAuditFiles**](doc//FileReportApi.md#getauditfiles) | **GET** /reports | 
 *FileReportApi* | [**getFileChecksums**](doc//FileReportApi.md#getfilechecksums) | **POST** /reports/checksum | 
@@ -161,6 +162,7 @@ Class | Method | HTTP request | Description
 *PersonApi* | [**getPersonThumbnail**](doc//PersonApi.md#getpersonthumbnail) | **GET** /people/{id}/thumbnail | 
 *PersonApi* | [**mergePerson**](doc//PersonApi.md#mergeperson) | **POST** /people/{id}/merge | 
 *PersonApi* | [**reassignFaces**](doc//PersonApi.md#reassignfaces) | **PUT** /people/{id}/reassign | 
+*PersonApi* | [**unassignFaces**](doc//PersonApi.md#unassignfaces) | **DELETE** /people | 
 *PersonApi* | [**updatePeople**](doc//PersonApi.md#updatepeople) | **PUT** /people | 
 *PersonApi* | [**updatePerson**](doc//PersonApi.md#updateperson) | **PUT** /people/{id} | 
 *SearchApi* | [**getAssetsByCity**](doc//SearchApi.md#getassetsbycity) | **GET** /search/cities | 
@@ -337,6 +339,7 @@ Class | Method | HTTP request | Description
  - [PeopleResponseDto](doc//PeopleResponseDto.md)
  - [PeopleUpdateDto](doc//PeopleUpdateDto.md)
  - [PeopleUpdateItem](doc//PeopleUpdateItem.md)
+ - [PeopleWithFacesResponseDto](doc//PeopleWithFacesResponseDto.md)
  - [PersonCreateDto](doc//PersonCreateDto.md)
  - [PersonResponseDto](doc//PersonResponseDto.md)
  - [PersonStatisticsResponseDto](doc//PersonStatisticsResponseDto.md)

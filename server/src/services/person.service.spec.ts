@@ -438,6 +438,60 @@ describe(PersonService.name, () => {
     });
   });
 
+  describe('unassignFace', () => {
+    it('should unassign a face', async () => {
+      personMock.getFaceById.mockResolvedValueOnce(faceStub.face1);
+      accessMock.person.checkOwnerAccess.mockResolvedValue(new Set([personStub.noName.id]));
+      accessMock.person.checkFaceOwnerAccess.mockResolvedValue(new Set([faceStub.face1.id]));
+      personMock.reassignFace.mockResolvedValue(1);
+      personMock.getRandomFace.mockResolvedValue(null);
+      personMock.getFaceById.mockResolvedValueOnce(faceStub.unassignedFace);
+
+      await expect(sut.unassignFace(authStub.admin, faceStub.face1.id)).resolves.toStrictEqual(
+        mapFaces(faceStub.unassignedFace, authStub.admin),
+      );
+
+      expect(mediaMock.generateThumbnail).not.toHaveBeenCalled();
+    });
+
+    it('should not unassign a face if user has no create access', async () => {
+      personMock.getFaceById.mockResolvedValueOnce(faceStub.face1);
+      accessMock.person.checkOwnerAccess.mockResolvedValue(new Set([personStub.noName.id]));
+      personMock.reassignFace.mockResolvedValue(1);
+      personMock.getRandomFace.mockResolvedValue(null);
+      personMock.getFaceById.mockResolvedValueOnce(faceStub.unassignedFace);
+
+      await expect(sut.unassignFace(authStub.admin, faceStub.face1.id)).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
+  describe('unassignFaces', () => {
+    it('should unassign a face', async () => {
+      personMock.getFacesByIds.mockResolvedValueOnce([faceStub.face1]);
+      accessMock.person.checkOwnerAccess.mockResolvedValue(new Set([personStub.noName.id]));
+      accessMock.person.checkFaceOwnerAccess.mockResolvedValue(new Set([faceStub.face1.id]));
+      personMock.reassignFace.mockResolvedValue(1);
+      personMock.getRandomFace.mockResolvedValue(null);
+      personMock.getFaceById.mockResolvedValueOnce(faceStub.unassignedFace);
+
+      await expect(
+        sut.unassignFaces(authStub.admin, { data: [{ assetId: faceStub.face1.id, personId: 'person-1' }] }),
+      ).resolves.toStrictEqual([{ id: 'assetFaceId1', success: true }]);
+    });
+
+    it('should not unassign a face if the user has no create access', async () => {
+      personMock.getFacesByIds.mockResolvedValueOnce([faceStub.face1]);
+      accessMock.person.checkOwnerAccess.mockResolvedValue(new Set([personStub.noName.id]));
+      personMock.reassignFace.mockResolvedValue(1);
+      personMock.getRandomFace.mockResolvedValue(null);
+      personMock.getFaceById.mockResolvedValueOnce(faceStub.unassignedFace);
+
+      await expect(
+        sut.unassignFaces(authStub.admin, { data: [{ assetId: faceStub.face1.id, personId: 'person-1' }] }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
   describe('handlePersonCleanup', () => {
     it('should delete people without faces', async () => {
       personMock.getAllWithoutFaces.mockResolvedValue([personStub.noName]);
@@ -551,7 +605,10 @@ describe(PersonService.name, () => {
 
       await sut.handleQueueRecognizeFaces({});
 
-      expect(personMock.getAllFaces).toHaveBeenCalledWith({ skip: 0, take: 1000 }, { where: { personId: IsNull() } });
+      expect(personMock.getAllFaces).toHaveBeenCalledWith(
+        { skip: 0, take: 1000 },
+        { where: { personId: IsNull(), isEdited: false } },
+      );
       expect(jobMock.queueAll).toHaveBeenCalledWith([
         {
           name: JobName.FACIAL_RECOGNITION,

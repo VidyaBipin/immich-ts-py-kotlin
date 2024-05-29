@@ -71,7 +71,7 @@ const assetResponse: AssetResponseDto = {
   exifInfo: assetInfo,
   livePhotoVideoId: null,
   tags: [],
-  people: [],
+  people: undefined,
   checksum: 'ZmlsZSBoYXNo',
   isTrashed: false,
   libraryId: 'library-id',

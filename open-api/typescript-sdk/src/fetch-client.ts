@@ -139,6 +139,10 @@ export type PersonWithFacesResponseDto = {
     name: string;
     thumbnailPath: string;
 };
+export type PeopleWithFacesResponseDto = {
+    numberOfFaces: number;
+    visiblePeople: PersonWithFacesResponseDto[];
+};
 export type SmartInfoResponseDto = {
     objects?: string[] | null;
     tags?: string[] | null;
@@ -173,7 +177,7 @@ export type AssetResponseDto = {
     originalPath: string;
     owner?: UserResponseDto;
     ownerId: string;
-    people?: PersonWithFacesResponseDto[];
+    people?: PeopleWithFacesResponseDto;
     resized: boolean;
     smartInfo?: SmartInfoResponseDto;
     stack?: AssetResponseDto[];
@@ -565,6 +569,13 @@ export type PartnerResponseDto = {
 export type UpdatePartnerDto = {
     inTimeline: boolean;
 };
+export type AssetFaceUpdateItem = {
+    assetId: string;
+    personId: string;
+};
+export type AssetFaceUpdateDto = {
+    data: AssetFaceUpdateItem[];
+};
 export type PeopleResponseDto = {
     hidden: number;
     people: PersonResponseDto[];
@@ -608,13 +619,6 @@ export type PersonUpdateDto = {
 };
 export type MergePersonDto = {
     ids: string[];
-};
-export type AssetFaceUpdateItem = {
-    assetId: string;
-    personId: string;
-};
-export type AssetFaceUpdateDto = {
-    data: AssetFaceUpdateItem[];
 };
 export type PersonStatisticsResponseDto = {
     assets: number;
@@ -1782,6 +1786,17 @@ export function getFaces({ id }: {
         ...opts
     }));
 }
+export function unassignFace({ id }: {
+    id: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: AssetFaceResponseDto;
+    }>(`/faces/${encodeURIComponent(id)}`, {
+        ...opts,
+        method: "DELETE"
+    }));
+}
 export function reassignFacesById({ id, faceDto }: {
     id: string;
     faceDto: FaceDto;
@@ -2113,6 +2128,18 @@ export function updatePartner({ id, updatePartnerDto }: {
         ...opts,
         method: "PUT",
         body: updatePartnerDto
+    })));
+}
+export function unassignFaces({ assetFaceUpdateDto }: {
+    assetFaceUpdateDto: AssetFaceUpdateDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: BulkIdResponseDto[];
+    }>("/people", oazapfts.json({
+        ...opts,
+        method: "DELETE",
+        body: assetFaceUpdateDto
     })));
 }
 export function getAllPeople({ withHidden }: {

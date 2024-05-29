@@ -6,10 +6,11 @@
     createPerson,
     getAllPeople,
     reassignFaces,
+    unassignFaces,
     type AssetFaceUpdateItem,
     type PersonResponseDto,
   } from '@immich/sdk';
-  import { mdiMerge, mdiPlus } from '@mdi/js';
+  import { mdiMerge, mdiPlus, mdiTagRemove } from '@mdi/js';
   import { createEventDispatcher, onMount } from 'svelte';
   import { quintOut } from 'svelte/easing';
   import { fly } from 'svelte/transition';
@@ -29,6 +30,7 @@
   let disableButtons = false;
   let showLoadingSpinnerCreate = false;
   let showLoadingSpinnerReassign = false;
+  let showLoadingSpinnerUnassign = false;
   let hasSelection = false;
   let screenHeight: number;
 
@@ -112,6 +114,24 @@
     showLoadingSpinnerReassign = false;
     dispatch('confirm');
   };
+
+  const handleUnassign = async () => {
+    const timeout = setTimeout(() => (showLoadingSpinnerUnassign = true), 100);
+    try {
+      disableButtons = true;
+      await unassignFaces({ assetFaceUpdateDto: { data: selectedPeople } });
+      notificationController.show({
+        message: `Un-assigned ${assetIds.length} asset${assetIds.length > 1 ? 's' : ''}`,
+        type: NotificationType.Info,
+      });
+    } catch (error) {
+      handleError(error, 'Unable to unassign assets');
+    } finally {
+      clearTimeout(timeout);
+    }
+    showLoadingSpinnerCreate = false;
+    dispatch('confirm');
+  };
 </script>
 
 <svelte:window bind:innerHeight={screenHeight} />
@@ -128,15 +148,28 @@
     <svelte:fragment slot="trailing">
       <div class="flex gap-4">
         <Button
+          title={'Unassign selected assets to a new person'}
+          size={'sm'}
+          disabled={disableButtons || hasSelection}
+          on:click={handleUnassign}
+        >
+          {#if showLoadingSpinnerUnassign}
+            <LoadingSpinner />
+          {:else}
+            <Icon path={mdiTagRemove} size={18} />
+          {/if}
+          <span class="ml-2"> Unassign</span></Button
+        >
+        <Button
           title={'Assign selected assets to a new person'}
           size={'sm'}
           disabled={disableButtons || hasSelection}
           on:click={handleCreate}
         >
-          {#if !showLoadingSpinnerCreate}
-            <Icon path={mdiPlus} size={18} />
-          {:else}
+          {#if showLoadingSpinnerCreate}
             <LoadingSpinner />
+          {:else}
+            <Icon path={mdiPlus} size={18} />
           {/if}
           <span class="ml-2"> Create new Person</span></Button
         >
@@ -146,12 +179,12 @@
           disabled={disableButtons || !hasSelection}
           on:click={handleReassign}
         >
-          {#if !showLoadingSpinnerReassign}
+          {#if showLoadingSpinnerReassign}
+            <LoadingSpinner />
+          {:else}
             <div>
               <Icon path={mdiMerge} size={18} class="rotate-180" />
             </div>
-          {:else}
-            <LoadingSpinner />
           {/if}
           <span class="ml-2"> Reassign</span></Button
         >
