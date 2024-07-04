@@ -35,7 +35,7 @@ export const geodataAdmin1Path = join(GEODATA_ROOT_PATH, 'admin1CodesASCII.txt')
 export const geodataAdmin2Path = join(GEODATA_ROOT_PATH, 'admin2Codes.txt');
 export const geodataCities500Path = join(GEODATA_ROOT_PATH, citiesFile);
 
-export const MOBILE_REDIRECT = 'app.immich:/';
+export const MOBILE_REDIRECT = 'app.immich:///';
 export const LOGIN_URL = '/auth/login?autoLaunch=0';
 
 export enum AuthType {
