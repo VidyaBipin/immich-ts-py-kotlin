@@ -75,7 +75,7 @@
     "job_settings_description": "管理任务并发",
     "job_status": "任务状态",
     "jobs_delayed": "{jobCount, plural, other {#项作业已推迟}}",
-    "jobs_failed": "{jobCount, plural, other {#项作业执行失败}}",
+    "jobs_failed": "{jobCount, plural, other {#项失败}}",
     "library_created": "已创建图库：{library}",
     "library_cron_expression": "Cron 表达式",
     "library_cron_expression_description": "使用 cron 格式设置扫描间隔。关于 cron 格式请参阅<link>Crontab Guru</link>",
